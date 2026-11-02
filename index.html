@@ -271,7 +271,7 @@ const ELS=[
   {k:'lens',   name:'조준 렌즈',    ic:'렌',role:'강화',c:'#ffcf4a',desc:'치명타 확률·피해↑ (확률 최대 50%)'},
   {k:'split',  name:'분열 모듈',    ic:'분',role:'강화',c:'#9dff6a',desc:'메인 탄 수↑ (최대 +4발)'},
   {k:'shield', name:'보호막 발생기',ic:'막',role:'방어',c:'#6ff0d2',desc:'일정 시간마다 피해 1번 막음'},
-  {k:'heal',   name:'수리 드론',    ic:'수',role:'방어',c:'#ff9fb8',desc:'일정 시간마다 체력 회복'},
+  {k:'heal',   name:'수리 드론',    ic:'수',role:'방어',c:'#ff9fb8',desc:'일정 시간마다 회복약을 떨궈요. 주우면 체력 15% 회복'},
   {k:'slowf',  name:'감속장 발생기',ic:'감',role:'방해',c:'#5fb6ff',desc:'주변 적·적 탄 감속 (가장 높은 등급만)'},
   {k:'gem',    name:'에너지 흡수기',ic:'흡',role:'자원',c:'#3ff2c0',desc:'보석 생산 + 분홍 탄 흡수 범위↑'},
   {k:'boost',  name:'부스터',       ic:'부',role:'기동',c:'#ff8ad8',desc:'메인 최고 이동 속도↑ (최대 +40%)'}
@@ -288,6 +288,10 @@ function devStats(){const d={amp:0,ampN:0,cool:0,lensP:0,lensT:-1,split:0,shRate
     else if(k==='split')d.split+=SPLIT[t];else if(k==='shield')d.shRate+=1/SHIELD_T[t];else if(k==='slowf')d.slowT=Math.max(d.slowT,t);else if(k==='gem')d.absorb+=ABSORB[t];else if(k==='boost')d.boost+=BOOST[t];}
   d.amp=Math.min(1.5,d.amp);d.cool=Math.min(.6,d.cool);d.lensP=Math.min(.5,d.lensP);d.split=Math.min(4,d.split);d.boost=Math.min(.4,d.boost);d.critX=1.5+.1*Math.max(0,d.lensT);return d;}
 function crit(b){if(G.dev.lensP>0&&Math.random()<G.dev.lensP){b.dmg*=G.dev.critX;b.crit=1;}}
+// 11/3 수리 드론: 자동 회복 대신 회복약을 떨굼. 나와 떨어진 화면 중간~위쪽에 떨어지고 5초 뒤 사라짐, 하나에 최대 체력 15%
+const DROP_T=[12,10,8.5,7,6,5.5,5],HEAL_PCT=.15;
+function dropHeal(s){G.heals=G.heals||[];if(G.heals.length>=2)return;let x=W/2,y=H*.4;for(let k=0;k<10;k++){x=rnd(30,W-30);y=rnd(H*.25,H*.58);if((x-player.x)**2+(y-player.y)**2>160*160)break;}
+  G.heals.push({x,y,t:5});G.parts.push({x:s.x,y:s.y,x2:x,y2:y,l:.3,c:'#7dff9a',line:1});say(x,y-22,'회복약!','#7dff9a');}
 const HEAL_A=[10,14,20,28,38,50,66];
 const HEAL_T=[24,18,13,9,6.5,4.5,3], GEM_T=[5,3.5,2.4,1.5,1,.65,.4];
 const TIERS=[{n:'일반',c:'#b9b3d6',m:1},{n:'희귀',c:'#5fb6ff',m:2.6},{n:'영웅',c:'#c77dff',m:6.5},{n:'전설',c:'#ffcf4a',m:16},{n:'신화',c:'#ff5a5a',m:38},{n:'초월',c:'#3ff2ff',m:90},{n:'불멸',c:'#ffffff',m:210}];
@@ -365,15 +369,16 @@ const FORM=[[-36,16],[36,16],[-62,38],[62,38],[-22,48],[22,48]];
 const DMIN=4,DMAX=6,MMIN=2,MMAX=3;
 const GEM_BONUS={4:0,5:.1,6:.25};
 // 난이도: 판 안 보석 배율, 적 체력, 적 피해 (기획서 확정값)
-// 11/3 난이도 기준을 고수 봇으로 다시 잡음(속도감 +30%/+25% 적용 후): 목표 고수 봇 첫 클리어 보통 70%·어려움 35%·지옥 10% → 측정 보통 68%·어려움 31%·지옥 11%. 수리 드론 회복 간격은 11/3 너프 유지
-const DIFFS=[{n:'보통',gem:1,hp:.9,dmg:.85},{n:'어려움',gem:1.5,hp:2.2,dmg:2.0},{n:'지옥',gem:2.5,hp:5.0,dmg:3.0,enrage:1.5}]; // 10/29 밤: 판 밖 강화 B안(최대 2.5배)에 맞춰 체력 2.5→2.0, 7→4.4 (어려움+중간 봇 53%, 직접 플레이로 가장 좋았던 상태와 같게). 10/29 시뮬 조정: 어려움 피해 1.3→1.4, 지옥 체력 4→5·피해 1.6→1.8·보스 강화 페이즈
+// 11/3 난이도 목표 변경(대표): 각 난이도를 '기대 수준' 강화로 할 때 셋 다 똑같이 아깝게 지는 정도. 고수 봇 기준 모두 약 15% 클리어(측정 보통 17%·어려움 18%·지옥 10%, 지옥은 그 뒤 살짝 낮춤). 땅 1 보통은 처음 하는 사람용으로 예전 난이도(EASY1)
+const DIFFS=[{n:'보통',gem:1,hp:+(window.DH0??1.3),dmg:+(window.DD0??1.75)},{n:'어려움',gem:1.5,hp:+(window.DH1??2.45),dmg:+(window.DD1??3.05)},{n:'지옥',gem:2.5,hp:+(window.DH2??4.6),dmg:+(window.DD2??3.25),enrage:1.5}];const EASY1={hp:.77,dmg:.49}; // 10/29 밤: 판 밖 강화 B안(최대 2.5배)에 맞춰 체력 2.5→2.0, 7→4.4 (어려움+중간 봇 53%, 직접 플레이로 가장 좋았던 상태와 같게). 10/29 시뮬 조정: 어려움 피해 1.3→1.4, 지옥 체력 4→5·피해 1.6→1.8·보스 강화 페이즈
 const UPGS=[{n:'기대 수준',m:1},{n:'기대×2',m:2},{n:'강화 없음',m:0}]; // 10/30 판 밖 강화: 기대 수준 = 이 스테이지를 처음 깰 때쯤 키웠을 강화
 /* 10/30 스테이지별 기대 강화 수준 (첫 출시 24스테이지, 최대 10배). 적 체력·피해를 기대 수준에 맞추고, 더 키우면 쉬워진다 */
 const PEXP_RANGE=[[1,2],[2,5],[4,10]],PREF=[1,1.6,2.5],HPREF=[1,2.0,4.4];
 const fHP=P=>1+.4*Math.log2(Math.max(1,P)); /* 강화가 체력에 주는 몫 (2배 1.4, 10배 약 2.3) */
 function pExp(d,si){const r=PEXP_RANGE[d];return r[0]+(r[1]-r[0])*si/23;}
 function mkDif(d,st,u){const tut=STAGES[st].tut;if(tut)d=0;const si=STAGES[st].si,pe=pExp(d,si),D=DIFFS[d],zm=STAGES[st].zone==='sky'?(window.SKY_HP??[1.1,1.15,1.4])[d]:STAGES[st].zone==='atmo'?(window.ATM_HP??ATM_HP)[d]:1;
-  return Object.assign({},D,{hp:(window.DHP?window.DHP[d]:HPREF[d])*pe/PREF[d]*zm*(tut?(window.TUT_HP??.38):1),dmg:D.dmg*fHP(pe)/fHP(PREF[d]),pe});} /* 튜토리얼: 보통 고정, 적 체력 60% */
+  const e1=STAGES[st].n==='땅 1'&&d===0?EASY1:null; /* 11/3: 땅 1 보통은 처음 하는 사람용으로 예전 난이도 유지 */
+  return Object.assign({},D,{hp:(window.DHP?window.DHP[d]:D.hp)*pe/PREF[d]*zm*(tut?(window.TUT_HP??.38):1)*(e1?e1.hp:1),dmg:D.dmg*fHP(pe)/fHP(PREF[d])*(e1?e1.dmg:1),pe});} /* 튜토리얼: 보통 고정, 적 체력 60% */
 function mkUpg(d,st,u){const pe=pExp(d,STAGES[st].si),m=STAGES[st].tut?0:UPGS[u].m,P=m?pe*m:1;return {n:UPGS[u].n,atk:P,hp:fHP(P),P};} // 10/29 판 밖 강화 B안: 끝까지 키우면 메인 화력 약 2.5배 (장치 레벨 약 1.6배 × 캐릭터 강화 5단계 1.5배). 중간 = 절반쯤 키운 상태
 let upg=0;try{upg=Math.min(2,Math.max(0,+localStorage.getItem('hcbr_upg')||0));}catch(e){}
 let diff=0;try{diff=Math.min(2,Math.max(0,+localStorage.getItem('hcbr_diff')||0));}catch(e){}
@@ -1632,7 +1637,7 @@ function playerPass(dt,frozen){ // 사람마다 (협동이면 컨텍스트를 �
     s.x+=(player.x+ox-s.x)*Math.min(1,dt*8);s.y+=(player.y+oy-s.y)*Math.min(1,dt*8);
     if(frozen)return;
     const e=ELS[s.el];s.t=(s.t||0)-dt;
-    if(e.k==='heal'&&G.hpf<1){s.ht+=dt;if(s.ht>=HEAL_T[s.tier]){s.ht=0;const a=HEAL_A[s.tier];G.hpf=Math.min(1,G.hpf+a/maxHP());burst(player.x,player.y,'#ff9fb8',16);say(s.x,s.y-20,'+'+a,'#ff9fb8');changed=true;}}
+    if(e.k==='heal'&&G.hpf<1){s.ht+=dt;if(s.ht>=DROP_T[s.tier]){s.ht=0;dropHeal(s);}}
     if(e.k==='gem'){s.gt+=dt;if(s.gt>=GEM_T[s.tier]){s.gt=0;G.gems+=Math.round(G.dif.gem);say(s.x,s.y-16,'+◆1','#6ff0d2');changed=true;}}
     if(e.role==='공격'&&s.t<=0){const tg=nearest(s.x,s.y);if(tg){s.t=e.cd;const a=Math.atan2(tg.y-s.y,tg.x-s.x),dmg=e.dmg*MTM[s.tier]*bf*G.upg.atk; // 공격 장치는 메인과 같은 배율 (등급 배율 규칙)
       let b;
@@ -1765,6 +1770,7 @@ function update(dt){if(G&&G.tutHold)return;
       if(b.pink){sfx('pink');if(!G.stage.tut)G.gems+=Math.round(G.dif.gem);if(!frozen)G.ult=Math.min(100,G.ult+3);burst(b.x,b.y,'#ff8ad8',6);say(player.x+18,player.y-24,'냠 +◆1','#ff8ad8');hud();}
       else hurt(b.d||10,false,b.who);}});}
   if(MP.on)player=MP.P[MP.cur].pl;
+  if(G.heals&&G.heals.length){for(const h of G.heals){if(!frozen)h.t-=dt;forAlive(()=>{if(h.t<=0)return;if((h.x-player.x)**2+(h.y-player.y)**2<(16+pR())**2){h.t=0;const a=Math.round(maxHP()*HEAL_PCT);G.hpf=Math.min(1,G.hpf+HEAL_PCT);burst(h.x,h.y,'#7dff9a',14);say(player.x,player.y-30,'+'+a,'#7dff9a');sfx('pink');hud();}});}G.heals=G.heals.filter(h=>h.t>0);}
   G.eb=G.eb.filter(b=>!b.dead&&b.y<H+20&&b.y>-40&&b.x>-20&&b.x<W+20);if(G.inks&&!frozen)G.inks=G.inks.filter(k=>(k.t-=dt)>0);
 
   for(const p of G.parts){p.l-=dt;if(!p.line){p.x+=p.vx*dt;p.y+=p.vy*dt;if(!p.spear){p.vx*=.94;p.vy*=.94;}}}
@@ -1957,6 +1963,7 @@ function draw(){if(typeof MP!=='undefined'&&MP.guest){ctx.save();ctx.setTransfor
     ctx.textAlign='center';ctx.font='13px "Do Hyeon",sans-serif';ctx.fillStyle='#f3eeff';ctx.fillText(BOSSES[bs[0].bid].name,W/2,34);}
   for(const t of G.tele){const k=1-t.t/t.t0,a=.18+.35*k*(Math.sin(performance.now()/60)>0?1:.6);ctx.fillStyle='rgba(255,59,59,'+a+')';ctx.strokeStyle='rgba(255,90,90,.9)';ctx.lineWidth=2;
     if(t.kind==='v'){ctx.fillRect(t.x-t.w/2,0,t.w,H);ctx.strokeRect(t.x-t.w/2,0,t.w,H);}else if(t.kind==='h'){ctx.fillRect(0,t.y-t.w/2,W,t.w);ctx.strokeRect(0,t.y-t.w/2,W,t.w);}else{ctx.beginPath();ctx.arc(t.x,t.y,t.r,0,6.29);ctx.fill();ctx.stroke();}}
+  if(G.heals)for(const h of G.heals){if(h.t<1.5&&Math.floor(h.t*8)%2)continue;ctx.save();ctx.translate(h.x,h.y);ctx.fillStyle='#7dff9a';ctx.strokeStyle='#ffffff';ctx.lineWidth=2.5;ctx.shadowColor='#7dff9a';ctx.shadowBlur=10;ctx.beginPath();ctx.rect(-4,-12,8,24);ctx.rect(-12,-4,24,8);ctx.fill();ctx.shadowBlur=0;ctx.stroke();ctx.restore();} // 회복약: 초록 십자 (아군 아이템)
   for(const b of G.eb){if(b.splitT!==undefined){ctx.strokeStyle='#ffcf4a';ctx.lineWidth=2;ctx.beginPath();ctx.arc(b.x,b.y,b.r+3+Math.sin(performance.now()/80)*2,0,6.29);ctx.stroke();}if(b.home>0){ctx.strokeStyle='#ff9a5c';ctx.lineWidth=1.5;ctx.beginPath();ctx.arc(b.x,b.y,b.r+3,0,6.29);ctx.stroke();}if(b.blk||b.brick||b.iron||b.wave){ctx.shadowBlur=0;ctx.lineWidth=2.5;ctx.strokeStyle='#1a1d2e';
       if(b.blk){ctx.save();ctx.translate(b.x,b.y);if(b.rot)ctx.rotate(b.rot);const z=b.spin?b.r*1.5:b.r;ctx.fillStyle=b.col||'#5fd68a';ctx.fillRect(-z,-z,z*2,z*2);ctx.strokeRect(-z,-z,z*2,z*2);if(b.solid&&b.life<1){ctx.globalAlpha=.5;}ctx.restore();ctx.globalAlpha=1;}
       else if(b.brick){ctx.fillStyle='#b86a3c';ctx.fillRect(b.x-11,b.y-7,22,14);ctx.strokeRect(b.x-11,b.y-7,22,14);}
@@ -2129,6 +2136,7 @@ window.BOT = (function(){
         for(const e of foes){const ex=e.x,ey=e.y+(e.type==='boss'?((e.dash>0||e.dsh>0)?H*1.3*t:0):e.sp*t*(typeof ESPD==='function'?ESPD():1)),rr=e.r+14+sk.margin;if((ex-px)**2+(ey-py)**2<rr*rr)cost+=1500*w;}
       }
       if(G.tele)for(const t of G.tele){if(t.t<.9&&teleHit(t,x,y,14))cost+=900;}
+      if(G.heals&&G.hpf<.8)for(const h of G.heals){const d=Math.hypot(h.x-x,h.y-y);cost+=d*.45*(1-G.hpf);} // 회복약 주우러 가기
       for(const b of pinks){const d=Math.hypot(b.x+b.vx*.25-x,b.y+b.vy*.25-y);if(d<60)cost-=25*(1-d/60);}
       if(tg&&MAINS[G.main.t].kind!=='eagle')cost+=Math.abs(x-tg.x)*.35;
       {const kk=MAINS[G.main.t].kind;if((kk==='bomber'||kk==='poison')&&tg){cost+=Math.abs(y-clamp(tg.y+H*(kk==='bomber'?.42:.38),yMin,yMax))*.25;}else cost+=Math.abs(y-H*.72)*.08;} // 폭격기·독룡: 터지는 거리만큼 아래에 서기
