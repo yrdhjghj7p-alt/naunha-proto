@@ -1225,7 +1225,12 @@ function bossMove(e,dt,sl){if(e.inv>0)e.inv-=dt;
       if(ph===3){e.armor=0;e.wkT=0;say(e.x,e.y+e.r+30,'코어가 드러났다! 빛날 때 때려!','#ff5a5a');burst(e.x,e.y,'#ff5a5a',30);}}
     if(e.armF>0)e.armF-=dt;if(e.tired>0)e.tired-=dt;
     if(ph===3){e.wkT=(e.wkT||0)+dt;e.weak=(e.wkT%5)<2;}else e.weak=false;
-    if(e.drop>0){e.drop-=dt;e.y+=(e.drop>.35?1:-1.2)*260*dt;e.y=clamp(e.y,90,H*.4);return;}
+    if(e.stS){ // 쿵: 경고 1.1초 → 바닥까지 낙하 → 착지 충격파 → 0.45초 뒤 다시 올라감 → 지침
+      if(e.stS==='warn'){e.stT-=dt;if(e.stT<=0)e.stS='fall';return;}
+      if(e.stS==='fall'){e.y+=950*dt;const fy=YMAX()-(e.ry||e.r)-2;if(e.y>=fy){e.y=fy;e.stS='land';e.stT=.45;const wy=YMAX()-12;burst(e.x,wy,'#9aa3b8',34);if(SHK)G.shake=.35;sfx('boom');hitP(.06,.3,6);
+          for(const sd of[-1,1])for(const dy of[0,-26])G.eb.push({x:clamp(e.x+sd*(e.r+6),10,W-10),y:wy+dy,vx:sd*280,vy:0,pink:false,r:13,d:20,wave:1,who:BOSSES[2].name+' 쿵 충격파',own:e});}return;}
+      if(e.stS==='land'){e.stT-=dt;if(e.stT<=0)e.stS='rise';return;}
+      if(e.stS==='rise'){e.y-=420*dt;if(e.y<=120){e.y=120;e.stS=null;e.tired=1.5;say(e.x,e.y-e.r-18,'지침! 지금이야','#6ff0d2');}return;}}
     e.y+=(120-e.y)*dt;if(!(e.chg>0))e.x=W/2+Math.sin(e.ph*.5)*Math.max(20,W/2-100);
     if(e.chg>0){e.chg-=dt;if(e.chg<=0){const a=e.aimA;G.eb.push({x:e.x-3,y:e.y-20,vx:Math.cos(a)*240,vy:Math.sin(a)*240,pink:false,r:14,d:24,iron:1,who:BOSSES[2].name+' 대포 쇠공',own:e});
         for(const d of[-.35,.35])G.eb.push({x:e.x-3,y:e.y-20,vx:Math.cos(a+d)*110,vy:Math.sin(a+d)*110,pink:d<0,r:6,d:9,who:BOSSES[2].name+' 탄',own:e});sfx('boom');if(SHK)G.shake=Math.max(G.shake,.1);}}
@@ -1234,8 +1239,7 @@ function bossMove(e,dt,sl){if(e.inv>0)e.inv-=dt;
       const wall=()=>{const lanes=4,lw=W/lanes,safe=pick(lanes),fromL=Math.random()<.5;let q=0;for(let j=0;j<lanes;j++){const i=fromL?j:lanes-1-j;if(i===safe)continue;const dl0=.95+q*.5;q++;
           tele({kind:'v',x:lw*(i+.5),w:lw*.85,t:dl0,fire:t=>{if(e.dead)return;for(let k=0;k<4;k++)G.eb.push({x:t.x+(k-1.5)*t.w/4.2,y:e.y+30+rnd(-8,8),vx:0,vy:520,pink:false,r:9,d:18,brick:1,who:BOSSES[2].name+' 성벽 벽돌',own:e});if(SHK)G.shake=Math.max(G.shake,.05);}});}
         say(e.x,e.y+e.r+24,'성벽 포격!','#ffcf4a');e.bt=(1.4+.5*(lanes-1))*gn;};
-      const stomp=()=>{say(e.x,e.y+e.r+24,'부스터 끄고… 쿵!','#ff4d6d');const wy=YMAX()-12;tele({kind:'h',y:wy-12,w:56,t:1.1,fire:t=>{burst(W/2,wy,'#9aa3b8',34);if(SHK)G.shake=.3;sfx('boom');for(const sd of[-1,1])for(const dy of[0,-26])G.eb.push({x:W/2+sd*10,y:wy+dy,vx:sd*270,vy:0,pink:false,r:13,d:20,wave:1,who:BOSSES[2].name+' 쿵 충격파',own:e});}});
-        sch(.4,()=>{if(!e.dead)e.drop=.7;},e);sch(1.6,()=>{if(!e.dead){e.tired=1.5;say(e.x,e.y-e.r-18,'지침! 지금이야','#6ff0d2');}},e);e.bt=3.2*gn;};
+      const stomp=()=>{say(e.x,e.y+e.r+24,'부스터 끄고… 쿵!','#ff4d6d');e.stS='warn';e.stT=1.1;tele({kind:'v',x:e.x,w:e.r*2+12,t:1.1});tele({kind:'h',y:YMAX()-24,w:56,t:1.1});e.bt=3.6*gn;}; // 11/3: 바닥까지 떨어졌다가 다시 올라감
       if(ph===1)(e.bk%3===0?wall:cannon)();else if(ph===2)(e.bk%2?cannon:wall)();else (e.bk%3===0?stomp:e.bk%3===1?wall:cannon)();}}
   }else if(e.bid===4){ // 중간 보스: 뚱땡이 수송선
     e.y+=(130-e.y)*dt*.35*sl;e.x=W/2+Math.sin(e.ph*.35)*Math.min(W/3,W/2-80);
