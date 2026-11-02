@@ -314,7 +314,7 @@ const MAINS=[
 ];
 // 남은 6종 (기획서 수치를 프로토타입 배율로 옮김: 기획서 피해 11 = 제트기 한 발 0.75)
 const DK=.75/11; // 기획서 피해 1 → 프로토타입 피해
-const CHAR_M={plane:1.3,balloon:.88,heli:7,bomber:4,iced:6.5,poison:5,boltd:1.6,swallow:5}; // 캐릭터별 피해 보정 (10/29 봇 시뮬로 맞춤: 기획서 수치 그대로면 혼자 0~31%)
+const CHAR_M={plane:1.3,balloon:.75,eagle:.8,heli:7,bomber:4,iced:6.5,poison:5,boltd:1.6,swallow:5}; // 캐릭터별 피해 보정 (10/29 봇 시뮬로 맞춤: 기획서 수치 그대로면 혼자 0~31%) (11/3: 열기구 .88→.75, 독수리 1→.8 — 별 등급보다 너무 셈)
 const OWN_SPLIT={eagle:1,stealth:1,penguin:1,bomber:1,boltd:1,swallow:1,iced:1}; // 분열·칩을 자기 방식으로 바꿔 쓰는 캐릭터
 function explode(x,y,rad,dmg,src,col){sfx('boom');G.hitBoom=1;for(const o of G.enemies)if(!o.dead&&(o.x-x)**2+(o.y-y)**2<(rad+o.r*.5)**2)hit(o,dmg,null,0,0,src);G.hitBoom=0;G.parts.push({x,y,vx:0,vy:0,r:rad,ring:1,l:.4,c:col||'#ff9a5a'});burst(x,y,col||'#ffcf4a',6);}
 // 펭귄 (★4, 기획서): 2초마다 가장 가까운 적에게 미끄러지며 돌진, 부딪히면 다음 적으로 튕겨 3번까지 맞힌 뒤 손가락 위치로 복귀.
