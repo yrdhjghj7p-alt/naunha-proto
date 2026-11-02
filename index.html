@@ -593,7 +593,7 @@ function tutDragon(){if(!G.stage.tut||G.tutDrag)return;const b=G.enemies.find(e=
 function spawnBoss(id){
   const n=G.wave,B=BOSSES[id];G.curBoss=id;
   let hp=110*Math.pow(n/5,1.6)*5*Math.pow(1.05,Math.max(0,n-20));
-  if(id===0)hp*=.8;if(id===2)hp*=1.5;if(id===3)hp*=.6;if(id===4)hp*=1.1;if(id===5)hp*=.9;if(id===7)hp*=.9;if(id===9)hp*=1.1;if(id===10)hp*=(window.BH10??.9);if(id===11)hp*=(window.BH11??.5);if(id===12)hp*=(window.BH12??1);if(id===13)hp*=(window.BH13??1.7);if(id===14)hp*=(window.BH14??.6);hp*=G.dif.hp;
+  if(id===0)hp*=.8;if(id===2)hp*=1.5;if(id===3)hp*=.6;if(id===4)hp*=1.1;if(id===5)hp*=.9;if(id===7)hp*=.9;if(id===9)hp*=1.1;if(id===10)hp*=(window.BH10??.9);if(id===11)hp*=(window.BH11??.5);if(id===12)hp*=(window.BH12??1);if(id===13)hp*=(window.BH13??1.7);if(id===14)hp*=(window.BH14??.6);hp*=G.dif.hp;if(!G.stage.tut&&G.stage.n!=='땅 1')hp*=(id===4||id===9||id===14)?1:(window.BOSS_FM??1.3); /* 11/3: 최종 보스전엔 거의 신화 이상이라 최종 보스가 약했음 → 최종 보스만 체력 1.8배 (중간 보스·웨이브는 그대로) */
   G.enemies.push({x:W/2,y:-60,r:id===3?34:id===5?44:38,hp,max:hp,type:'boss',bid:id,gen:0,ph:0,slow:0,ft:1.5,alt:0,sp:0,dash:0,vx:70,ty:110,armor:id===2?2+n*.35:0});
   {const R=G.enemies[G.enemies.length-1],q=BHIT[id];if(q){R.r=q[0];if(q[1])R.ry=q[1];}}
   if(id===6){const R=G.enemies[G.enemies.length-1],c=G.dlv>=1?3:2;R.slot=0;R.nS=c+1;for(let k=1;k<=c;k++)G.enemies.push({x:W/2,y:-60,r:R.r,hp:hp*.25,max:hp*.25,type:'boss',bid:6,clone:1,real:R,slot:k,gen:0,ph:k,slow:0,ft:rnd(1,2),sp:0,armor:0});} /* 거울 분신 */
@@ -873,7 +873,7 @@ function hurt(dmg,pierceInv,cause){sfx('hurt');if(cause&&cause.endsWith('충돌'
   if(!running||(!pierceInv&&G.inv>0))return;
   {const pm=window.PG_INV??PG_INV;if(!pierceInv&&G.pg&&G.pg.state!=='idle'&&(pm===true||(pm==='body'&&cause&&cause.endsWith('충돌'))))return;} // 'body': 돌진 중 몸통 충돌만 무시, 탄은 맞음 // 펭귄 돌진 중 무적 (가안)
   if(G.shield&&!pierceInv){G.shield=false;G.inv=.4;burst(player.x,player.y,'#6ff0d2',16);say(player.x,player.y-34,'보호막!','#6ff0d2');return;}
-  const d=Math.round(dmg*(G.bossWave?1.15:.85)*(1+G.wave*.02)*G.dif.dmg*(1+.1*(G.dev?G.dev.ampN:0)));G.hpf-=d/maxHP();cause=cause||'적 탄';if(MAINS[G.main.t].kind==='kid'){const ks0=kidStage();G.kidK=Math.max(0,(G.kidK||0)-KID_HIT);if(ks0>=3&&kidStage()<3&&G.main.tier>=2)say(player.x,player.y-60,'고룡 각성 풀림','#ff8a8a');}G.taken[cause]=(G.taken[cause]||0)+d;G.lastCause=cause;G.hitN=G.hitN||{};G.hitN[cause]=(G.hitN[cause]||0)+1;if(window.AUTO_GOD)G.hpf+=d/maxHP(); /* 오토 무적: 기록만 하고 체력은 그대로 */
+  const d=Math.round(dmg*(G.bossWave?(G.wave===LASTW()?(window.BW_DM??1.3):1.15):.85)*(1+G.wave*.02)*G.dif.dmg*(1+.1*(G.dev?G.dev.ampN:0)));G.hpf-=d/maxHP();cause=cause||'적 탄';if(MAINS[G.main.t].kind==='kid'){const ks0=kidStage();G.kidK=Math.max(0,(G.kidK||0)-KID_HIT);if(ks0>=3&&kidStage()<3&&G.main.tier>=2)say(player.x,player.y-60,'고룡 각성 풀림','#ff8a8a');}G.taken[cause]=(G.taken[cause]||0)+d;G.lastCause=cause;G.hitN=G.hitN||{};G.hitN[cause]=(G.hitN[cause]||0)+1;if(window.AUTO_GOD)G.hpf+=d/maxHP(); /* 오토 무적: 기록만 하고 체력은 그대로 */
   if(!pierceInv)G.inv=.6;G.shake=.25;burst(player.x,player.y,'#ff4d6d',12);say(player.x-24,player.y-30,'-'+d,'#ff4d6d');hud();
   if(G.hpf<=0&&MP.on){mpDown();return;}
   if(G.hpf<=0){if(G.stage.tut&&!window.TUT_NOREV){G.hpf=1;G.inv=2;G.tutRev++;tip('괜찮아요, 다시! (튜토리얼에서는 쓰러지지 않아요)',3);}else gameOver();}
@@ -1361,8 +1361,8 @@ function bossEngine(e,dt,pools,o){o=o||{};
   if(e.atkT<=0){const pool=pools[Math.min(ph,pools.length)-1];let p=any(pool);if(p===e.lastP&&pool.length>1)p=any(pool.filter(q=>q!==e.lastP));e.lastP=p;e.nextP=p;e.pre=['pillars','sweep','falls'].includes(p)?.6:.25;}
 }
 // 단계 관문 (11/1): 대기권 보스는 체력 3단계마다 최소 시간을 버틴다. 너무 빨리 깎으면 남는 피해는 방어막이 흡수하고 보석으로 조금 돌려준다
-const GATE_T=window.GATE_T||{f:[9,9,9],l:[7,7,7],m:[6,6,6]}; // 최종 보스 / 중간 보스(쌍둥이) 단계당 초
-function gateCut(e,d){if(window.NOGATE)return d;const k=e.gK||0;if(k>2)return d;const T=(e.bid===13?[19,19,19]:e.bid===3?[3,3,3]:e.bid===14||e.bid===4||e.bid===9?GATE_T.m:e.bid<10?GATE_T.l:GATE_T.f)[k];if((e.gT||0)>=T)return d;
+const GATE_T=window.GATE_T||{f:[15,15,15],l:[12,12,12],m:[6,6,6]}; // 최종 보스 / 중간 보스(쌍둥이) 단계당 초 (11/3: 최종 보스 문 9→15, 땅·하늘 7→12 — 신화 들고 오면 문 시간만에 끝나서)
+function gateCut(e,d){if(window.NOGATE)return d;const k=e.gK||0;if(k>2)return d;const T=(e.bid===13?[19,19,19]:e.bid===3?[3,3,3]:e.bid===14||e.bid===4||e.bid===9?GATE_T.m:(G.stage.tut||G.stage.n==='땅 1')?[7,7,7]:e.bid<10?GATE_T.l:GATE_T.f)[k];if((e.gT||0)>=T)return d;
   const fl=k<2?e.max*[2/3,1/3][k]+1:e.max*.01;const room=Math.max(0,e.hp-fl);if(d<=room)return d;const ab=d-room;e.gSh=.35;
   e.okA=(e.okA||0)+ab;e.okG=e.okG||0;while(e.okA>=e.max*.1&&e.okG<30){e.okA-=e.max*.1;e.okG+=3;addGems(3);say(e.x+rnd(-30,30),e.y-e.r-20,'오버킬 +◆3','#ffcf4a');}
   if(!(e.gSay>0)){e.gSay=2.5;say(e.x,e.y+e.r+16,'방어막! 분노!','#ff6a5a');}e.rage=1.2;return room;}
