@@ -390,7 +390,7 @@ function resize(){
   const r=C.getBoundingClientRect();dpr=Math.min(window.devicePixelRatio||1,2);
   W=r.width;H=r.height;C.width=Math.round(W*dpr);C.height=Math.round(H*dpr);ctx.setTransform(dpr,0,0,dpr,0,0);
   if(typeof MP!=='undefined'&&MP.guest&&MP.HW){const sc=Math.min(W/MP.HW,H/MP.HH),ox=(W-MP.HW*sc)/2,oy=(H-MP.HH*sc)/2;MP.gs={s:sc,ox,oy};ctx.setTransform(dpr*sc,0,0,dpr*sc,dpr*ox,dpr*oy);W=MP.HW;H=MP.HH;} // 참가자: 방장 화면 크기에 맞춰 그림
-  if(player){player.x=clamp(player.x,20,W-20);player.y=clamp(player.y,H*.35,H-30);player.tx=player.x;player.ty=player.y;}
+  if(player){player.x=clamp(player.x,20,W-20);player.y=clamp(player.y,H*.15,H-30);player.tx=player.x;player.ty=player.y;}
   if(typeof placeUlt==='function')try{placeUlt();}catch(e){}
   stars=Array.from({length:70},()=>({x:Math.random()*W,y:Math.random()*H,s:Math.random()*1.6+.3,v:Math.random()*40+20}));
 }
@@ -620,7 +620,7 @@ function placeUlt(){ultBtn.style.bottom=(dockEl.classList.contains('up')?dockEl.
 C.addEventListener('pointerdown',e=>{if(!running)return;const p=pt(e);
   if((p.x-player.x)**2+(p.y-player.y)**2<GRAB*GRAB){C.setPointerCapture(e.pointerId);drag={dx:player.x-p.x,dy:player.y-p.y};setDock(false);}
   else if(dockEl.classList.contains('up'))setDock(false);});
-C.addEventListener('pointermove',e=>{if(!drag)return;const p=pt(e);player.tx=clamp(p.x+drag.dx,18,W-18);player.ty=clamp(p.y+drag.dy,H*.35,YMAX());});
+C.addEventListener('pointermove',e=>{if(!drag)return;const p=pt(e);player.tx=clamp(p.x+drag.dx,18,W-18);player.ty=clamp(p.y+drag.dy,H*.15,YMAX()) /* 11/3: 위쪽 한계 35%→15% */;});
 ['pointerup','pointercancel'].forEach(t=>C.addEventListener(t,()=>{if(!drag)return;drag=null;clearTimeout(dockT);dockT=setTimeout(()=>{if(!drag&&running)setDock(true);},200);}));
 function pt(e){const r=C.getBoundingClientRect();const x=e.clientX-r.left,y=e.clientY-r.top;if(MP.guest&&MP.gs)return{x:(x-MP.gs.ox)/MP.gs.s,y:(y-MP.gs.oy)/MP.gs.s};return{x,y};}
 
@@ -1551,7 +1551,7 @@ function netSend(m,to){ // 방장: to=참가자 id (없으면 모두), 참가자
   if(MP.host){for(const g of MP.guests){if(to&&g.id!==to)continue;const c=NET.conns[g.id];if(!c||!c.open)continue;const dc=c.dataChannel;if(m.t==='s'&&dc&&dc.bufferedAmount>262144)continue; /* 느린 폰이 밀리면 화면 정보는 건너뜀 (쌓여서 멈추는 것 방지) */try{c.send(m);}catch(err){}}}else if(NET.conn&&NET.conn.open)NET.conn.send(m);}
 function mpHost(){if(MP.host||MP.guest)return;loadPeer(()=>{MP.code=String(1000+pick(9000));MP.host=true;MP.guests=[];{const ci=document.getElementById('mpCode');ci.value=MP.code;ci.readOnly=true;ci.style.borderColor='#ffcf4a';ci.style.color='#ffcf4a';document.getElementById('mpJoinBtn').hidden=true;document.getElementById('mpHostBtn').textContent='내 방 코드 →';} /* 방장은 코드 칸에 내 방 코드를 보여주고 참가는 숨김 (다른 코드를 적어 헷갈리는 일 방지) */
   const onMsg=(id,m)=>{if(m.t==='hello'){if(MP.guests.length>=4||G&&running){netSend({t:'full'},id);return;}if(!MP.guests.some(g=>g.id===id))MP.guests.push({id,name:'친구'+(MP.guests.length+1),deck:m.deck,mdeck:m.mdeck});mpList();mpStatus('방 코드 '+MP.code+' · 친구에게 알려주세요');netSend({t:'lobby',n:MP.guests.length+1},id);}
-    else if(m.t==='i'){const k=MP.guests.findIndex(g=>g.id===id);const P=MP.P[k+1];if(P&&!P.down){P.pl.tx=clamp(m.x,18,W-18);P.pl.ty=clamp(m.y,H*.35,YMAX());}}
+    else if(m.t==='i'){const k=MP.guests.findIndex(g=>g.id===id);const P=MP.P[k+1];if(P&&!P.down){P.pl.tx=clamp(m.x,18,W-18);P.pl.ty=clamp(m.y,H*.15,YMAX());}}
     else if(m.t==='c'){const k=MP.guests.findIndex(g=>g.id===id)+1;if(!MP.on||!MP.P[k]||!ACT[m.f]||MP.P[k].down)return;swapTo(k);try{ACT[m.f](...(m.a||[]));}catch(err){}swapTo(MP.me);hud();}
     else if(m.t==='bye'){const k=MP.guests.findIndex(g=>g.id===id);if(k>=0){if(MP.on&&MP.P[k+1]){MP.P[k+1].down=true;MP.P[k+1].rv=9;say(W/2,H*.3,MP.P[k+1].name+' 연결 끊김','#ff4d6d');}if(!MP.on)MP.guests.splice(k,1);mpList();}}};
   if(MOCK){NET.bc=new BroadcastChannel('nh-'+MP.code);NET.bc.onmessage=ev=>{const d=ev.data;if(d.to==='host')onMsg(d.from,d.m);};mpStatus('방 코드 '+MP.code+' (같은 브라우저 시험 모드)');mpList();return;}
