@@ -548,7 +548,9 @@ const SPDON=()=>G&&G.stage&&!G.stage.tut&&G.stage.n!=='땅 1';const ESPD=()=>SPD
 const SKY=()=>G&&G.stage&&G.stage.zone==='sky';
 const ATM=()=>G&&G.stage&&G.stage.zone==='atmo';
 const ATM_HP=[.82,.9,.95]; // 대기권 적 체력 배수 (10/31 가안, 봇으로 맞춤)
-function mkEnemy(kind,x,y,o){const n=G.wave,hp0=baseHP(n);let e;
+/* 11/3 후반 압박: 중간 보스 이후 웨이브가 진행될수록 0→1 (메인 성장 속도를 따라가게) */
+function LATE(){if(!G||G.bossWave||G.stage.tut||G.stage.n==='땅 1')return 0;const L=LASTW(),m=G.midWave<99?G.midWave:Math.floor(L/2);return Math.max(0,Math.min(1,(G.wave-m)/Math.max(1,L-m)));}
+function mkEnemy(kind,x,y,o){const n=G.wave,hp0=baseHP(n)*(1+.2*LATE());let e;
   if(kind==='balloon'){e={type:'balloon',r:15,hp:hp0*1.2,sp:(rnd(42,58)+n*3)*.6};e.max=e.hp;Object.assign(e,{x,y,ph:Math.random()*6,slow:0,ft:9},o||{});G.enemies.push(e);return 1;} /* 하늘: 퐁퐁 풍선병 */
   if(kind==='ray'){e={type:'ray',r:14,hp:hp0*.9,sp:(rnd(42,58)+n*3)*1.1};e.max=e.hp;Object.assign(e,{x,y,ph:Math.random()*6,slow:0,ft:9,rs:0},o||{});G.enemies.push(e);return 1;} /* 하늘: 돌격 가오리 */
   if(kind==='jelly'){e={type:'jelly',r:13,hp:hp0,sp:(rnd(42,58)+n*3)*.7};e.max=e.hp;Object.assign(e,{x,y,ph:Math.random()*6,slow:0,ft:9,jt:rnd(1,2.5)},o||{});G.enemies.push(e);return 1;} /* 하늘: 깜빡 꼬마 해파리 */
@@ -559,7 +561,7 @@ function mkEnemy(kind,x,y,o){const n=G.wave,hp0=baseHP(n);let e;
   else if(kind==='armor')e={type:'armor',r:16,hp:hp0*2.2,sp:(rnd(42,58)+n*3)*.6,armor:.6+n*.12};
   else{const sh=Math.random()<Math.min(.5,CURVE()&&!window.SHOLD?.3+n*.0125:.16+n*.028);e={type:sh?'eye':'bat',r:sh?15:13,hp:hp0*(sh?1.4:1),sp:rnd(42,58)+n*3};}
   if(e.type==='eye'){e.turret=Math.random()<.4;e.pat=pickPat(n);} // 포탑형(멈춰서 3발), 공격: 조준 / 부채(6웨이브~) / 가속탄(10웨이브~)
-  if(un('elite')&&kind!=='drone'&&Math.random()<(G.dlv>=2?.08:.04)){e.elite=1;e.hp*=3;e.r*=1.5;if(!e.pat)e.pat=pickPat(n);e.eAb=Math.random()<.5?'double':'guard';} // 엘리트: 크고 빛남, 탄 두 배 또는 체력 절반까지 피해 감소, 보석 6배
+  if(un('elite')&&kind!=='drone'&&Math.random()<(G.dlv>=2?.08:.04)*(1+LATE())){e.elite=1;e.hp*=3;e.r*=1.5;if(!e.pat)e.pat=pickPat(n);e.eAb=Math.random()<.5?'double':'guard';} // 엘리트: 크고 빛남, 탄 두 배 또는 체력 절반까지 피해 감소, 보석 6배
   e.max=e.hp;Object.assign(e,{x,y,ph:Math.random()*6,slow:0,ft:rnd(.3,.9)},o||{}); /* 10/29: 화면에 들어오자마자 곧 첫 발 */G.enemies.push(e);return 1;}
 function laneX(){G.laneK=(G.laneK||0)+1;const ln=(G.laneK%2?0:3)+Math.floor(Math.random()*3);return W*(ln+.5)/6+rnd(-12,12);} /* 10/29 토아플랜식 레인 */
 function spawnEnemy(){ // 편대로 내보내고, 내보낸 마릿수를 돌려줌
@@ -1207,6 +1209,7 @@ function drawBossArt(e){const A=BART[e.bid];if(!A||!USE_ART)return false;let bas
   if(e.bid===2&&e.chg>0&&e.aimA!==undefined){ctx.strokeStyle='rgba(255,77,109,'+(.35+.5*(1-e.chg))+')';ctx.lineWidth=3;ctx.setLineDash([10,8]);ctx.beginPath();ctx.moveTo(e.x,e.y-18);ctx.lineTo(e.x+Math.cos(e.aimA)*700,e.y-18+Math.sin(e.aimA)*700);ctx.stroke();ctx.setLineDash([]);}
   return true;}
 function bossMove(e,dt,sl){if(e.inv>0)e.inv-=dt;
+  if(!e.clone&&G.wave===LASTW()&&e.bid!==4&&e.bid!==9&&e.bid!==14&&!G.stage.tut&&G.stage.n!=='땅 1'){const k=e.gK||0;const x=dt*((k>=2?.6:k>=1?.35:0)+(e.hp<e.max*.3?.2:0));if(x>0){if(e.atkT!==undefined)e.atkT-=x;if(e.ft!==undefined)e.ft-=x;if(e.bt!==undefined)e.bt-=x;if(e.mvT!==undefined)e.mvT-=x;if(e.pT!==undefined)e.pT-=x;if(e.shT!==undefined)e.shT-=x;}if(k>=2&&e.tired>.6)e.tired=.6;if(e.hp<e.max*.3&&!e.lastSay){e.lastSay=1;G.bannerTxt='최후 발악!';G.bannerC='#ff4d6d';G.banner=1.2;}} /* 11/3 최종 보스 압박: 2페이즈 +35%, 3페이즈 +60%·지침 0.6초, 체력 30% 이하 +20% */
   if(e.rage>0){e.rage-=dt;const x=dt*.67;if(e.atkT!==undefined)e.atkT-=x;if(e.ft!==undefined)e.ft-=x;if(e.bt!==undefined)e.bt-=x;if(e.mvT!==undefined)e.mvT-=x;if(e.pT!==undefined)e.pT-=x;if(e.shT!==undefined)e.shT-=x;} // 11/3 분노: 방어막이 막는 동안 공격이 40% 빨라짐
   if(e.bid>=10&&e.bid<=14){atmBoss(e,dt,sl);return;}
   const EP=G.stage.tut||window.NOENG?null:BOSS_POOLS[e.bid];if(EP)gateTick(e,dt);
@@ -1661,7 +1664,7 @@ function update(dt){if(G&&G.tutHold)return;
   if(!frozen&&G.sch&&G.sch.length){for(const q of G.sch){q.t-=dt;if(q.t<=0&&!q.done){q.done=1;try{q.f();}catch(err){}}}G.sch=G.sch.filter(q=>!q.done);}
   if(!frozen&&G.bossWave&&G.enemies.some(e=>e.type==='boss'&&!e.dead&&e.y>0))G.bmM=(G.bmM||0)+mainMul()*dt; // 궁극기 위력 기준 측정용: 보스에게 주는 평소 피해
   if(frozen){}
-  else if(G.spawnLeft>0){G.spawnT-=dt;if(G.spawnT<=0){const c=spawnEnemy();G.spawnLeft=Math.max(0,G.spawnLeft-c);G.spawnT=Math.max(.3,1.1-G.wave*.05)*(SPDON()?.9:1)*(c>1?c*.8:1)/Math.min(1,G.wpace||1)*(G.stage.tut?.55:1);}}
+  else if(G.spawnLeft>0){G.spawnT-=dt;if(G.spawnT<=0){const c=spawnEnemy();G.spawnLeft=Math.max(0,G.spawnLeft-c);G.spawnT=Math.max(.3,1.1-G.wave*.05)*(SPDON()?.9:1)*(1-.25*LATE())*(c>1?c*.8:1)/Math.min(1,G.wpace||1)*(G.stage.tut?.55:1);}}
   else if(G.enemies.length===0&&!(G.fin&&G.fin.t>0)){G.waveDelay+=dt;if(G.waveDelay>(SPDON()?.5:1.1)){G.waveDelay=0;if(!G.stage.tut)G.gems+=Math.round((2+Math.floor(G.wave/3))*G.dif.gem);if(G.wave===LASTW())stageClear();else if(MP.on&&(G.wave===G.midWave||G.wave===LASTW()-1)){if(G.wave===G.midWave)markKill();coopHangar();}else if(G.wave===G.midWave)openHangar('mid');else if(G.wave===LASTW()-1&&!G.stage.tut)openHangar('pre');else startWave(G.wave+1);}}
 
   runPlayers(dt,frozen);
