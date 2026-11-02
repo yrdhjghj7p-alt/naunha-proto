@@ -873,7 +873,7 @@ function hurt(dmg,pierceInv,cause){sfx('hurt');if(cause&&cause.endsWith('충돌'
   if(!running||(!pierceInv&&G.inv>0))return;
   {const pm=window.PG_INV??PG_INV;if(!pierceInv&&G.pg&&G.pg.state!=='idle'&&(pm===true||(pm==='body'&&cause&&cause.endsWith('충돌'))))return;} // 'body': 돌진 중 몸통 충돌만 무시, 탄은 맞음 // 펭귄 돌진 중 무적 (가안)
   if(G.shield&&!pierceInv){G.shield=false;G.inv=.4;burst(player.x,player.y,'#6ff0d2',16);say(player.x,player.y-34,'보호막!','#6ff0d2');return;}
-  const d=Math.round(dmg*(1+G.wave*.02)*G.dif.dmg*(1+.1*(G.dev?G.dev.ampN:0)));G.hpf-=d/maxHP();cause=cause||'적 탄';if(MAINS[G.main.t].kind==='kid'){const ks0=kidStage();G.kidK=Math.max(0,(G.kidK||0)-KID_HIT);if(ks0>=3&&kidStage()<3&&G.main.tier>=2)say(player.x,player.y-60,'고룡 각성 풀림','#ff8a8a');}G.taken[cause]=(G.taken[cause]||0)+d;G.lastCause=cause;G.hitN=G.hitN||{};G.hitN[cause]=(G.hitN[cause]||0)+1;if(window.AUTO_GOD)G.hpf+=d/maxHP(); /* 오토 무적: 기록만 하고 체력은 그대로 */
+  const d=Math.round(dmg*(G.bossWave?1.15:.85)*(1+G.wave*.02)*G.dif.dmg*(1+.1*(G.dev?G.dev.ampN:0)));G.hpf-=d/maxHP();cause=cause||'적 탄';if(MAINS[G.main.t].kind==='kid'){const ks0=kidStage();G.kidK=Math.max(0,(G.kidK||0)-KID_HIT);if(ks0>=3&&kidStage()<3&&G.main.tier>=2)say(player.x,player.y-60,'고룡 각성 풀림','#ff8a8a');}G.taken[cause]=(G.taken[cause]||0)+d;G.lastCause=cause;G.hitN=G.hitN||{};G.hitN[cause]=(G.hitN[cause]||0)+1;if(window.AUTO_GOD)G.hpf+=d/maxHP(); /* 오토 무적: 기록만 하고 체력은 그대로 */
   if(!pierceInv)G.inv=.6;G.shake=.25;burst(player.x,player.y,'#ff4d6d',12);say(player.x-24,player.y-30,'-'+d,'#ff4d6d');hud();
   if(G.hpf<=0&&MP.on){mpDown();return;}
   if(G.hpf<=0){if(G.stage.tut&&!window.TUT_NOREV){G.hpf=1;G.inv=2;G.tutRev++;tip('괜찮아요, 다시! (튜토리얼에서는 쓰러지지 않아요)',3);}else gameOver();}
@@ -1157,15 +1157,15 @@ function enemyShot0(e){if((e.x-player.x)**2+(e.y-player.y)**2<80*80||G.eb.length
 function aimed(e,sp,pink,r,d){const M=muz(e),ox=M?M[0]:e.x,oy=M?M[1]:e.y+e.r*.5,a=Math.atan2(player.y-oy,player.x-ox);G.eb.push({x:ox,y:oy,vx:Math.cos(a)*sp,vy:Math.sin(a)*sp,pink,r:r||6,d:d||12,who:e.type==='boss'?BOSSES[e.bid].name+' 탄':'적 탄'});}
 function spiralTick(e,dt,n2,sp,who){if(!(e.spiK>0))return;e.spiT-=dt;if(e.spiT<=0){e.spiT=.12;e.spiK--;e.spiA+=.5;for(let s=0;s<(n2||2);s++){const q=e.spiA+s*6.283/(n2||2);G.eb.push({x:e.x,y:e.y,vx:Math.cos(q)*(sp||120),vy:Math.sin(q)*(sp||120),pink:e.spiK===0,r:5,d:7,who:who||'회전탄',own:e});}}}
 // 땅·하늘 보스 패턴 (11/2): 고유 기믹은 그대로 두고 공통 패턴을 체력 3단계로 얹는다. L=패턴 세기 상한(땅 0, 하늘 1), c=공격 간격 배율(클수록 느긋)
-const BOSS_POOLS={0:{p:[['stream'],['stream','sweep'],['stream','sweep','gapwall']],L:0,c:2},
-  1:{p:[['stream'],['stream','gapwall'],['stream','gapwall','mix']],L:0,c:2},
-  2:{p:[['stream'],['stream','gapwall'],['gapwall','sweep','stream']],L:0,c:2},
-  4:{p:[['mix'],['mix','stream'],['mix','stream']],L:0,c:1.6,mid:1},
-  5:{p:[['stream'],['stream','mix'],['falls','mix','stream']],L:1,c:1.6},
-  6:{p:[['stream'],['stream','flower'],['flower','gapwall','stream']],L:1,c:1.6},
-  7:{p:[['mix'],['mix','pillars'],['pillars','mix','stream']],L:1,c:1.6},
-  8:{p:[['stream'],['stream','falls'],['falls','gapwall','stream']],L:1,c:1.6},
-  9:{p:[['stream'],['stream','pillars'],['pillars','stream','sweep']],L:1,c:1.4,mid:1}};
+const BOSS_POOLS={0:{p:[['stream'],['stream','sweep'],['stream','sweep','gapwall']],L:0,c:1.3},
+  1:{p:[['stream'],['stream','gapwall'],['stream','gapwall','mix']],L:0,c:1.3},
+  2:{p:[['stream'],['stream','gapwall'],['gapwall','sweep','stream']],L:0,c:1.3},
+  4:{p:[['mix'],['mix','stream'],['mix','stream']],L:0,c:1.2,mid:1},
+  5:{p:[['stream'],['stream','mix'],['falls','mix','stream']],L:1,c:1.2},
+  6:{p:[['stream'],['stream','flower'],['flower','gapwall','stream']],L:1,c:1.2},
+  7:{p:[['mix'],['mix','pillars'],['pillars','mix','stream']],L:1,c:1.2},
+  8:{p:[['stream'],['stream','falls'],['falls','gapwall','stream']],L:1,c:1.2},
+  9:{p:[['stream'],['stream','pillars'],['pillars','stream','sweep']],L:1,c:1.1,mid:1}};
 // ===== 보스 그림 (11/2, 땅 보스 5종). 그림 파일이 없거나 아직 안 불러졌으면 예전 도형으로 그림
 const USE_ART=/[?&]art\b/.test(location.search); // 11/2: 프로토타입은 그림 없이 도형 + 빛 원 (그림·연출은 그림 쪽 데모에서 확인). ?art 를 붙이면 그림 확인용으로 켜짐
 const ART_DIR='art/boss/',IMG={};
@@ -1227,7 +1227,7 @@ function bossMove(e,dt,sl){if(e.inv>0)e.inv-=dt;
       ring(e.alt*.26,120);if(G.dlv>=1)ring(-e.alt*.26+.22,95);}
   }else if(e.bid===2){ // 강철 담장 로봇 (11/2 개편): 1 갑옷 완전체=대포 충전 / 2 갑옷 금=대포+성벽 포격 / 3 코어 노출=성벽 포격+쿵 충격파. 날아다니는 장난감 성
     if(e.armor0===undefined){e.armor0=e.armor*(G.dlv>=2?1.5:1);e.armor=e.armor0;e.gph=1;}
-    const gn=G.stage.tut?9:1.3,fr=e.hp/e.max,ph=fr>2/3?1:fr>1/3?2:3;
+    const gn=G.stage.tut?9:1.0,fr=e.hp/e.max,ph=fr>2/3?1:fr>1/3?2:3;
     if(ph!==e.gph){e.gph=ph;hitP(.14,.35,8);G.flash=.3;G.flashC='#ffe9a8';
       if(ph===2){e.armor=e.armor0*.5;say(e.x,e.y+e.r+30,'갑옷에 금이 갔다!','#ffcf4a');burst(e.x,e.y,'#e6ebf5',24);}
       if(ph===3){e.armor=0;e.wkT=0;say(e.x,e.y+e.r+30,'코어가 드러났다! 빛날 때 때려!','#ff5a5a');burst(e.x,e.y,'#ff5a5a',30);}}
@@ -1238,7 +1238,7 @@ function bossMove(e,dt,sl){if(e.inv>0)e.inv-=dt;
       if(e.stS==='fall'){e.y+=950*dt;const fy=YMAX()-(e.ry||e.r)-2;if(e.y>=fy){e.y=fy;e.stS='land';e.stT=.45;const wy=YMAX()-12;burst(e.x,wy,'#9aa3b8',34);if(SHK)G.shake=.35;sfx('boom');hitP(.06,.3,6);
           for(const sd of[-1,1])for(const dy of[0,-26])G.eb.push({x:clamp(e.x+sd*(e.r+6),10,W-10),y:wy+dy,vx:sd*280,vy:0,pink:false,r:13,d:20,wave:1,who:BOSSES[2].name+' 쿵 충격파',own:e});}return;}
       if(e.stS==='land'){e.stT-=dt;if(e.stT<=0)e.stS='rise';return;}
-      if(e.stS==='rise'){e.y-=420*dt;if(e.y<=120){e.y=120;e.stS=null;e.tired=1.5;say(e.x,e.y-e.r-18,'지침! 지금이야','#6ff0d2');}return;}}
+      if(e.stS==='rise'){e.y-=420*dt;if(e.y<=120){e.y=120;e.stS=null;e.tired=1.2;say(e.x,e.y-e.r-18,'지침! 지금이야','#6ff0d2');}return;}}
     e.y+=(120-e.y)*dt;if(!(e.chg>0))e.x=W/2+Math.sin(e.ph*.5)*Math.max(20,W/2-100);
     if(e.chg>0){e.chg-=dt;if(e.chg<=0){const a=e.aimA;G.eb.push({x:e.x-3,y:e.y-20,vx:Math.cos(a)*240,vy:Math.sin(a)*240,pink:false,r:14,d:24,iron:1,who:BOSSES[2].name+' 대포 쇠공',own:e});
         for(const d of[-.35,.35])G.eb.push({x:e.x-3,y:e.y-20,vx:Math.cos(a+d)*110,vy:Math.sin(a+d)*110,pink:d<0,r:6,d:9,who:BOSSES[2].name+' 탄',own:e});sfx('boom');if(SHK)G.shake=Math.max(G.shake,.1);}}
@@ -1292,7 +1292,7 @@ function bossMove(e,dt,sl){if(e.inv>0)e.inv-=dt;
   }else{ // 블록 영토 로봇 (11/2): 갈라지는 단계가 곧 페이즈. 1 큰 몸=블록 낙하·블록 줄 / 2 두 조각=좌우 협공 / 3 네 조각=조준탄 + (어려움) 합체 돌진
     const blockRow=(o,two)=>{const cw=26,cols=Math.floor(W/cw),gw=G.dlv>=1?3:4,g=clamp(Math.round(player.x/cw)-1+(Math.random()<.5?-2:2),0,cols-gw),y0=o.y+Math.min(o.r,34);G.parts.push({x:(g+1.5)*cw,y:y0,x2:(g+1.5)*cw,y2:y0+90,l:.8,c:'#6ff0d2',line:1});
       for(const k of(two?[0,1]:[0]))sch(.45+k*1.1,()=>{if(o.dead)return;for(let c=0;c<cols;c++){if(c>=g&&c<g+gw)continue;G.eb.push({x:c*cw+13,y:y0,vx:0,vy:80,pink:false,r:7,d:9,who:BOSSES[3].name+' 블록 줄',own:o});}},o);};
-    const gentle=G.stage.tut?9:1.3,B=G.blk||(G.blk={t:1.6,turn:-1,dT:7,g:0,line:null});
+    const gentle=G.stage.tut?9:1.0,B=G.blk||(G.blk={t:1.6,turn:-1,dT:7,g:0,line:null});
     if(e.tired>0)e.tired-=dt;
     if(e.bdash>0){e.bdash-=dt;e.y+=(e.bdash>.45?1:-1)*H*.9*dt;e.y=Math.max(60,e.y);return;}
     if(e.gen===0){gateTick(e,dt);
@@ -1301,7 +1301,7 @@ function bossMove(e,dt,sl){if(e.inv>0)e.inv-=dt;
         const k3=e.bk%3;
         if(k3===1){const nDrop=dropTets(e,G.dlv>=1?2:1,BOSSES[3].name+' 블록 낙하');
           if(nDrop>0){
-            sfx('boom');say(e.x,e.y+e.r+24,'블록 낙하!','#5fd68a');e.bt=1.1+2.0*gentle;sch(1.3,()=>{if(!e.dead){e.tired=1.5;say(e.x,e.y-e.r-18,'지침! 지금이야','#6ff0d2');}},e);}
+            sfx('boom');say(e.x,e.y+e.r+24,'블록 낙하!','#5fd68a');e.bt=1.1+2.0*gentle;sch(1.3,()=>{if(!e.dead){e.tired=1.2;say(e.x,e.y-e.r-18,'지침! 지금이야','#6ff0d2');}},e);}
           else{blockRow(e,G.dlv>=2);e.bt=2.6*gentle;}}
         else if(k3===0){const M=muz(e),a=Math.atan2(player.y-M[1],player.x-M[0]);G.eb.push({x:M[0],y:M[1],vx:Math.cos(a)*135,vy:Math.sin(a)*135,pink:false,r:15,d:16,blk:1,spin:1,col:'#e8c35a',rot:0,who:BOSSES[3].name+' 회전 블록',own:e});say(e.x,e.y+e.r+24,'블록 던지기!','#5fd68a');e.bt=2.2*gentle;}
         else{blockRow(e,G.dlv>=2);e.bt=2.6*gentle;}}}
@@ -1355,9 +1355,9 @@ function bossEngine(e,dt,pools,o){o=o||{};
   const L=Math.min((o.Lmax??2)+(G.dlv>=2?1:0),G.dlv+(ph>=3?1:0)*(G.dlv>=1?1:0)),spd=[1,1,.85,.72][ph]*[1.15,1,.88][G.dlv];
   if(!e.despDone&&fr<.1&&!o.noDesp){e.despDone=1;e.desp=[3.5,5,6][G.dlv];G.bannerTxt='발악!';G.bannerC='#ff4d6d';G.banner=1.2;e.dT=0;}
   if(e.desp>0){e.desp-=dt;e.dT-=dt;if(e.dT<=0){e.dT=[.75,.55,.42][G.dlv];PAT.flower(e,Math.min(2,G.dlv+1));if(Math.random()<.5)PAT.stream(e,G.dlv);}return;}
-  if(e.pre>0){e.pre-=dt;if(e.pre<=0){const cd=PAT[e.nextP](e,L);e.atkT=cd*spd*(o.cdm||1);if(G.dlv>=1&&(ph>=2||G.dlv>=2)&&o.layer){const lp=o.layer;sch(.5,()=>{if(!e.dead&&!(e.tired>0))PAT[lp](e,0);},e);}}return;}
+  if(e.pre>0){e.pre-=dt;if(e.pre<=0){const cd=PAT[e.nextP](e,L);e.atkT=cd*spd*(o.cdm||1)*(o.cdm?1:.85);if(G.dlv>=1&&(ph>=2||G.dlv>=2)&&o.layer){const lp=o.layer;sch(.5,()=>{if(!e.dead&&!(e.tired>0))PAT[lp](e,0);},e);}}return;}
   e.atkT=(e.atkT??1.2)-dt;
-  if(e.tiredNext&&e.atkT<=.0){e.tiredNext=0;e.tired=1.5;say(e.x,e.y-e.r-18,'지침! 지금이야','#6ff0d2');return;}
+  if(e.tiredNext&&e.atkT<=.0){e.tiredNext=0;e.tired=1.2;say(e.x,e.y-e.r-18,'지침! 지금이야','#6ff0d2');return;}
   if(e.atkT<=0){const pool=pools[Math.min(ph,pools.length)-1];let p=any(pool);if(p===e.lastP&&pool.length>1)p=any(pool.filter(q=>q!==e.lastP));e.lastP=p;e.nextP=p;e.pre=['pillars','sweep','falls'].includes(p)?.6:.25;}
 }
 // 단계 관문 (11/1): 대기권 보스는 체력 3단계마다 최소 시간을 버틴다. 너무 빨리 깎으면 남는 피해는 방어막이 흡수하고 보석으로 조금 돌려준다
