@@ -636,7 +636,7 @@ const mCost=()=>Math.min(90,12+G.mSummons*6); // 뽑기 비용 상한 90 (확정
 const mPaintCost=t=>6+t*6;
 // 각성 (10/30 가안): 판 안에서 신화 → 초월 → 불멸은 합성으로 거의 불가능(대기석 2칸)해서, 남는 보석으로 한 단계씩 올린다
 const AWK=[500,900]; // 신화→초월, 초월→불멸
-const awkCost=()=>{const a=window.AWK||AWK;return G.main.tier===4?a[0]:G.main.tier===5?a[1]:Infinity;};
+const awkCost=()=>{const a=window.AWK||AWK,m=(G.dif&&G.dif.gem)||1;return G.main.tier===4?Math.round(a[0]*m):G.main.tier===5?Math.round(a[1]*m):Infinity;} /* 11/3: 각성 비용 × 난이도 보석 배율 (어려운 난이도에서 보석이 많아 각성이 더 쉬워지던 역전 해소) */;
 const awkOK=()=>!!G&&!G.stage.tut&&G.main.tier>=4&&G.main.tier<MAXT;
 function awaken(){if(!G||!running||!awkOK()){return;}const c=awkCost();if(G.gems<c){shakeEl(awkB);return;}
   G.gems-=c;sfx('awk');const hp0=G.hpf;G.main.tier++;G.awkN=(G.awkN||0)+1;G.bestTier=Math.max(G.bestTier,G.main.tier);G.hpf=hp0;
