@@ -1460,9 +1460,10 @@ function hangSlot(p){
     if(can&&!G.hpaint)b.classList.add('can');b.setAttribute('aria-label',(p==='m'?'메인 ':'')+TIERS[o.tier].n+' '+I.name);}
   else{b.innerHTML='<div class="nm">'+(p==='m'?'메인':p[0]==='b'?'대기석':p[0]==='c'?'전투 칸':'빈 칸')+'</div>';b.setAttribute('aria-label','빈 칸');}
   if(G.hsel===p)b.classList.add('sel');
-  b.addEventListener('click',()=>tapH(p));return b;
+  b.addEventListener('click',()=>act('hTap',p));return b;
 }
-function renderHangar(msg){
+function renderHangar(msg){if(MP.on){if(msg)G.hmsg=msg;if(MP.cur!==MP.me)return;msg=msg||G.hmsg;if(MP.P[MP.me]&&MP.P[MP.me].down)msg='격추돼서 이번 정비는 쉬어요. 다음 정비 때 돌아와요.';}
+  {const go=document.getElementById('hGo');if(!go.dataset.o)go.dataset.o=go.innerHTML;go.innerHTML=MP.on?(G.hready?'준비 취소':'준비 완료')+' ('+(G.coR||'')+')':go.dataset.o;}
   const K=hk();
   topLine();
   document.getElementById('hTabM').setAttribute('aria-selected',G.htab==='m');document.getElementById('hTabC').setAttribute('aria-selected',G.htab==='c');
@@ -1472,7 +1473,7 @@ function renderHangar(msg){
   const ch=document.getElementById('hChoices');ch.hidden=!G.choices;ch.innerHTML='';
   if(G.choices)G.choices.forEach(o=>{const I=K.info(o),b=document.createElement('button');b.className='slot';b.innerHTML=slotHTML(I.c,o.tier,I.name);b.style.borderColor=TIERS[o.tier].c;
     b.setAttribute('aria-label','선택: '+TIERS[o.tier].n+' '+I.name);
-    b.addEventListener('click',()=>{const arr=K.storeArr(),k=arr.indexOf(null);arr[k]=Object.assign({},o);G.choices=null;renderHangar(TIERS[o.tier].n+' '+I.name+'을(를) 보관함에 넣었어요.');});ch.appendChild(b);});
+    b.addEventListener('click',()=>act('hPick',G.choices.indexOf(o)));ch.appendChild(b);});
   const pull=document.getElementById('hPull'),full=K.storeArr().indexOf(null)<0;
   pull.disabled=!!G.choices||full||G.gems<K.cost();
   pull.innerHTML=G.choices?'하나를 고르세요':full?'보관함 가득<span>합성해서 비우기</span>':'랜덤 뽑기<span>보관함으로 · ◆ '+K.cost()+'</span>';
@@ -1498,25 +1499,29 @@ function tapH(p){
   G.hsel=null;renderHangar(msg);
 }
 function hTab(t){if(G.choices){renderHangar('먼저 뽑은 것 중 하나를 골라주세요.');return;}G.htab=t;G.hsel=null;G.hpaint=false;renderHangar();}
-document.getElementById('hTabM').addEventListener('click',()=>hTab('m'));
-document.getElementById('hTabC').addEventListener('click',()=>hTab('c'));
-document.getElementById('hPull').addEventListener('click',()=>{
+function hPickF(i){const o=G.choices&&G.choices[i];if(!o)return;const K=hk(),arr=K.storeArr(),k=arr.indexOf(null);arr[k]=Object.assign({},o);G.choices=null;renderHangar(TIERS[o.tier].n+' '+K.info(o).name+'을(를) 보관함에 넣었어요.');}
+document.getElementById('hTabM').addEventListener('click',()=>act('hTab','m'));
+document.getElementById('hTabC').addEventListener('click',()=>act('hTab','c'));
+document.getElementById('hPull').addEventListener('click',()=>act('hPull'));
+function hPullF(){
   const K=hk();if(G.choices||K.storeArr().indexOf(null)<0||G.gems<K.cost())return;G.gems-=K.cost();K.paid();
   const r=Math.random(),o=K.make(any(K.pool()));if(K.odds)o.tier=r<.05?2:r<.30?1:0;const arr=K.storeArr();arr[arr.indexOf(null)]=o;renderHangar('뽑기 결과: '+TIERS[o.tier].n+' '+K.info(o).name+' → 보관함');
-});
-document.getElementById('hPaint').addEventListener('click',()=>{if(G.choices)return;G.hpaint=!G.hpaint;G.hsel=null;renderHangar();});
+}
+function hPaintF(){if(G.choices)return;G.hpaint=!G.hpaint;G.hsel=null;renderHangar();}
+document.getElementById('hPaint').addEventListener('click',()=>act('hPaintT'));
 document.getElementById('hGo').addEventListener('click',()=>{
+  if(MP.on){act('hReady');return;}
   if(G.choices){renderHangar('먼저 뽑은 것 중 하나를 골라주세요.');return;}
   launch();
 });
-function topLine(){const t=document.getElementById('hTop');t.textContent='◆ '+G.gems+' 보유 · 정비 시간 '+Math.max(0,Math.ceil(G.htime))+'초 남음';t.classList.toggle('warn',G.htime<=10);}
+function topLine(){const t=document.getElementById('hTop'),ht=MP.on?(G.coT||0):G.htime;t.textContent='◆ '+G.gems+' 보유 · 정비 시간 '+Math.max(0,Math.ceil(ht))+'초 남음'+(MP.on?' · 준비 '+(G.coR||''):'');t.classList.toggle('warn',ht<=10);}
 function launch(){clearInterval(G.hti);document.getElementById('hangOv').hidden=true;running=true;startWave(G.wave+1);hud();}
 function startHTimer(){clearInterval(G.hti);G.hti=setInterval(()=>{if(document.hidden)return;G.htime-=.25;topLine();
   if(G.htime<=0){if(G.choices){const arr=hk().storeArr();arr[arr.indexOf(null)]=Object.assign({},G.choices[0]);G.choices=null;}launch();}},250);}
 
 // ===== 협동 (10/31 프로토타입): 방장 폰이 전체를 계산하고 참가자(최대 4명)는 화면만 받아 그림. 연결은 PeerJS (주소에 ?mock 이 있으면 같은 브라우저 탭끼리 BroadcastChannel)
 const MP={on:false,host:false,guest:false,me:0,cur:0,P:[],code:'',guests:[],lastSnap:0,sendT:0,inT:0};
-const PK=['gems','gemAcc','gemMul','dev','shield','shT','chipGot','pendingChip','chipT','chipS','prismGot','chipLog','hpf','summons','mSummons','slots','deck','mdeck','main','bench','store','cstore','paint','ult','pg','heat','heatGrace','beams','stT','stealthT','inv','fireT','fireMax','U','umis','kidK','blades','swA','heliA','cones','upg','bestTier','ult2Told','_pt','_pmt','awkN','ultN','muzT','grazeN','taken','lastCause','gemTot','beamN','auto','_hadU','hpMul','tutRev'];
+const PK=['gems','gemAcc','gemMul','dev','shield','shT','chipGot','pendingChip','chipT','chipS','prismGot','chipLog','hpf','summons','mSummons','slots','deck','mdeck','main','bench','store','cstore','paint','ult','pg','heat','heatGrace','beams','stT','stealthT','inv','fireT','fireMax','U','umis','kidK','blades','swA','heliA','cones','upg','bestTier','ult2Told','_pt','_pmt','awkN','ultN','muzT','grazeN','taken','lastCause','gemTot','beamN','auto','_hadU','hpMul','tutRev','htab','hsel','hpaint','choices','hmsg','hready'];
 const MP_HP=[1,1.7,2.3,2.9,3.5],MP_DMG=[1,1.1,1.2,1.3,1.4],MP_BS=[1,1.05,1.1,1.15,1.2],MP_CNT=[1,1.15,1.3,1.45,1.6]; // 기획서 인원별 강해짐 (확정, 수치 가안)
 function pSave(i){const P=MP.P[i];if(!P)return;for(const k of PK)P.s[k]=G[k];} // 기체 위치(pl)는 사람마다 고정된 객체라 저장하지 않음 (다른 사람 기체가 내 것으로 바뀌는 버그 수정)
 function pLoad(i){const P=MP.P[i];for(const k of PK)G[k]=P.s[k];player=P.pl;MP.cur=i;}
@@ -1536,10 +1541,24 @@ function runPlayers(dt,frozen){if(!MP.on){playerPass(dt,frozen);return;}
       if(far){say(far.pl.x,far.pl.y-40,'흩어지면 노려요!','#ff4d6d');for(let k=0;k<5;k++)sch(.5+k*.08,()=>{if(bs.dead)return;const a=Math.atan2(far.pl.y-bs.y,far.pl.x-bs.x);G.eb.push({x:bs.x,y:bs.y,vx:Math.cos(a)*230,vy:Math.sin(a)*230,pink:false,r:7,d:14,who:'흩어진 사람 노리는 탄'});},bs);}}}}
 function mpDown(){const P=MP.P[MP.cur];P.down=true;G.hpf=0;burst(player.x,player.y,'#ff4d6d',40);say(player.x,player.y-30,P.name+' 격추!','#ff4d6d');
   if(MP.P.every(q=>q.down))setTimeout(()=>{if(G&&running)gameOver();},600);}
+/* 11/3 협동 정비창: 모두 동시에 각자 정비 → 전원 준비 또는 35초 지나면 함께 출격. 격추된 사람은 2번까지 부활(최대 체력 절반) */
 function coopHangar(){let rv=0;forP(i=>{const P=MP.P[i];if(P.down&&(P.rv||0)<2){P.down=false;P.rv=(P.rv||0)+1;G.hpMul=(G.hpMul||1)*.5;G.hpf=1;G.inv=2;rv++;}});
-  G.bannerTxt=rv?'정비 완료 · 친구 복귀!':'정비 완료';G.bannerC='#6ff0d2';G.banner=1.6;setTimeout(()=>{if(G&&running)startWave(G.wave+1);},900);G.waveDelay=-99;}
+  forP(i=>{G.htab='m';G.hsel=null;G.hpaint=false;G.choices=null;G.hready=!!MP.P[i].down;G.hmsg=(rv?'친구 '+rv+'명 복귀! ':'')+'각자 정비하고 준비 완료를 누르세요. 모두 준비되면 바로 출격해요.';});
+  running=false;G.coOpen=true;G.coT=35;G.waveDelay=-99;coCheck();if(!G.coOpen)return;document.getElementById('hangOv').hidden=false;renderHangar();topLine();
+  clearInterval(G.hti);G.hti=setInterval(()=>{if(!G||!G.coOpen){clearInterval(G.hti);return;}G.coT-=.25;coCheck();if(G.coOpen){topLine();hostSnap(1);}},250);}
+function coCheck(){if(!MP.host||!G.coOpen)return;const al=[];MP.P.forEach((P,i)=>{if(!P.down)al.push(i);});const r=al.filter(i=>pField(i,'hready')).length;G.coR=r+'/'+al.length;
+  if(MP.cur===MP.me){const go=document.getElementById('hGo');if(go)go.innerHTML=(G.hready?'준비 취소':'준비 완료')+' ('+G.coR+')';}
+  if(r>=al.length||G.coT<=0)coLaunch();}
+function coLaunch(){clearInterval(G.hti);G.coOpen=false;forP(()=>{if(G.choices){const arr=hk().storeArr(),k=arr.indexOf(null);if(k>=0)arr[k]=Object.assign({},G.choices[0]);G.choices=null;}G.hsel=null;G.hpaint=false;G.hready=false;G.hmsg='';});
+  document.getElementById('hangOv').hidden=true;running=true;last=performance.now();G.bannerTxt='모두 출격!';G.bannerC='#6ff0d2';G.banner=1.4;startWave(G.wave+1);hud();hostSnap(1);}
+function guestHang(){const ov=document.getElementById('hangOv');if(G.coOpen&&G.htab){if(ov.hidden){ov.hidden=false;MP.hkey='';}
+    const key=JSON.stringify([G.htab,G.hsel,G.hpaint,G.choices,G.hmsg,G.hready,G.gems,G.main,G.bench,G.store,G.slots,G.cstore,Math.ceil(G.coT||0),G.coR,MP.P[MP.me]&&MP.P[MP.me].down]);
+    if(key!==MP.hkey){MP.hkey=key;renderHangar();topLine();}}
+  else if(!ov.hidden&&MP.hkey!==undefined){ov.hidden=true;MP.hkey=undefined;}}
 const ACT={tapSlot:i=>tapSlot(i),summon:()=>summon(),tapMain:()=>tapMain(),tapBench:i=>tapBench(i),togglePaint:()=>togglePaint(),awaken:()=>awaken(),mainSummon:()=>mainSummon(),
-  ult2:()=>{if(!castUlt()&&MP.cur===MP.me)shakeEl(ult2Btn);},stop:()=>stopPress(),auto:v=>{G.auto=!!v;autoMergeRun();}};
+  ult2:()=>{if(!castUlt()&&MP.cur===MP.me)shakeEl(ult2Btn);},stop:()=>stopPress(),auto:v=>{G.auto=!!v;autoMergeRun();},
+  hTap:p=>{if(!G.coOpen&&MP.on)return;G.hmsg='';tapH(p);},hTab:t=>{G.hmsg='';hTab(t);},hPull:()=>{G.hmsg='';hPullF();},hPaintT:()=>{G.hmsg='';hPaintF();},hPick:i=>hPickF(i),
+  hReady:()=>{if(!G.coOpen)return;if(G.choices){renderHangar('먼저 뽑은 것 중 하나를 골라주세요.');return;}G.hready=!G.hready;renderHangar(G.hready?'준비 완료! 다른 사람을 기다려요.':'준비를 취소했어요.');coCheck();}};
 function act(f,...a){if(MP.guest){netSend({t:'c',f,a});return;}ACT[f](...a);}
 // ---- 연결
 const MOCK=/mock/.test(location.search);let NET={peer:null,conns:{},bc:null,id:Math.random().toString(36).slice(2,8)};
@@ -1578,14 +1597,14 @@ function mpStart(){hostBeat(true); // 방장: 판 시작
   MP.guests.forEach((g,k)=>netSend({t:'start',idx:k+1,n,stage,diff,upg,W,H,names:MP.P.map(P=>P.name)},g.id));
   say(W/2,H*.45,n+'명 협동 출격!','#6ff0d2');}
 // ---- 스냅샷 (방장 → 참가자, 초당 15번)
-const SK=['main','bench','slots','gems','hpf','ult','beams','heat','cones','blades','shield','inv','stealthT','kidK','fireT','fireMax','muzT','pg','dev','mSummons','summons','paint','pendingChip','chipT','deck','mdeck','upg','hpMul','bestTier','auto','awkN','ult2Told','umis','U'];
+const SK=['main','bench','slots','gems','hpf','ult','beams','heat','cones','blades','shield','inv','stealthT','kidK','fireT','fireMax','muzT','pg','dev','mSummons','summons','paint','pendingChip','chipT','deck','mdeck','upg','hpMul','bestTier','auto','awkN','ult2Told','umis','U','store','cstore','htab','hsel','hpaint','choices','hmsg','hready'];
 const r1=v=>Math.round(v*10)/10;
 function plain(o,depth){if(o===null||o===undefined)return o;if(typeof o==='number')return r1(o);if(typeof o!=='object')return o;if(depth>3)return null;if(o instanceof Set)return null;if(Array.isArray(o))return o.map(v=>plain(v,depth+1));
   const r={};for(const k in o){const v=o[k];if(typeof v==='function')continue;if(k==='tg'||k==='hit'||k==='own'||k==='wpOf'||k==='real'||k==='twin'||k==='hs'||k==='e'){if(k==='tg'&&v&&typeof v==='object')r.tg={x:r1(v.x),y:r1(v.y),r:v.r,dead:v.dead};continue;}r[k]=plain(v,depth+1);}return r;}
 function encE(e){if(!e.id)e.id=G.eidN=(G.eidN||0)+1;const o={};for(const k in e){const v=e[k];if(typeof v==='number')o[k]=r1(v);else if(typeof v==='string'||typeof v==='boolean')o[k]=v;}return o;}
 function hostSnap(dt){if(!MP.on||!MP.host)return;MP.sendT-=dt;if(MP.sendT>0)return;MP.sendT=1/20;pSave(MP.cur);
   const np=G.parts.filter(p=>!p._s);np.forEach(p=>p._s=1);const nt=G.texts.filter(t=>!t._s);nt.forEach(t=>t._s=1);const nd=(G.dn||[]).filter(d=>!d._s);nd.forEach(d=>d._s=1);
-  const m={t:'s',w:{wave:G.wave,stop:r1(G.stop),banner:r1(G.banner),bannerTxt:G.bannerTxt,bannerC:G.bannerC,flash:r1(G.flash||0),flashC:G.flashC,shake:r1(G.shake),fin:G.fin?plain(G.fin,0):null,bossTotal:G.bossTotal,stopChain:G.stopChain||0,stopLock:G.stopLock||0,bossWave:G.bossWave,clouds:plain(G.clouds||[],0),inks:plain(G.inks||[],0)},
+  const m={t:'s',w:{wave:G.wave,stop:r1(G.stop),banner:r1(G.banner),bannerTxt:G.bannerTxt,bannerC:G.bannerC,flash:r1(G.flash||0),flashC:G.flashC,shake:r1(G.shake),fin:G.fin?plain(G.fin,0):null,bossTotal:G.bossTotal,stopChain:G.stopChain||0,stopLock:G.stopLock||0,bossWave:G.bossWave,clouds:plain(G.clouds||[],0),inks:plain(G.inks||[],0),coOpen:!!G.coOpen,coT:r1(G.coT||0),coR:G.coR||''},
     E:G.enemies.map(encE),B:G.eb.map(b=>[r1(b.x),r1(b.y),b.r,b.pink?1:0,b.splitT!==undefined?1:0,b.home>0?1:0,r1(b.vx),r1(b.vy)]),S:G.shots.map(b=>[r1(b.x),r1(b.y),b.r,b.c,b.lance?1:0,r1(b.vx),r1(b.vy),b.o??0]),T:G.tele.map(t=>({kind:t.kind,x:r1(t.x||0),y:r1(t.y||0),w:t.w,r:t.r,t:r1(t.t),t0:t.t0})),
     NP:plain(np.slice(-80),0),NT:nt.map(t=>({x:r1(t.x),y:r1(t.y),t:t.t,c:t.c,l:t.l})),ND:nd.map(d=>({x:r1(d.x),y:r1(d.y),v:Math.round(d.v),l:d.l,c:d.c,b:d.b})),
     P:MP.P.map(P=>{const s={};for(const k of SK)s[k]=plain(P.s[k],0);return {pl:{x:r1(P.pl.x),y:r1(P.pl.y),wing:r1(P.pl.wing)},s,down:P.down,name:P.name,rv:P.rv};})};
@@ -1597,7 +1616,7 @@ function guestStart(m){MP.on=true;MP.guest=true;MP.host=false;MP.me=m.idx;MP.cur
   for(let i=0;i<MP.P.length;i++)MP.P[i].s=mkPState(deck,mdeck);pLoad(MP.me);resize();running=true;last=performance.now();
   for(const id of['startOv','overOv','assignOv'])document.getElementById(id).hidden=true;setDock(true);hud();}
 function guestSnap(m){if(!MP.guest||!G)return;try{guestSnap0(m);}catch(err){showErr(err);}}
-function guestSnap0(m){MP.lastSnap=performance.now();const w=m.w;Object.assign(G,{wave:w.wave,stop:w.stop,banner:w.banner,bannerTxt:w.bannerTxt,bannerC:w.bannerC,flash:w.flash,flashC:w.flashC,shake:w.shake,fin:w.fin,bossTotal:w.bossTotal,stopChain:w.stopChain,stopLock:w.stopLock,bossWave:w.bossWave,clouds:w.clouds,inks:w.inks});
+function guestSnap0(m){MP.lastSnap=performance.now();const w=m.w;Object.assign(G,{wave:w.wave,stop:w.stop,banner:w.banner,bannerTxt:w.bannerTxt,bannerC:w.bannerC,flash:w.flash,flashC:w.flashC,shake:w.shake,fin:w.fin,bossTotal:w.bossTotal,stopChain:w.stopChain,stopLock:w.stopLock,bossWave:w.bossWave,clouds:w.clouds,inks:w.inks,coOpen:w.coOpen,coT:w.coT,coR:w.coR});
   {const old=MP.em||new Map(),nm=new Map();G.enemies=m.E.map(q=>{let o=old.get(q.id);if(o){const x=o.x,y=o.y;for(const k in o)if(!(k in q)&&k!=='x'&&k!=='y')delete o[k];Object.assign(o,q);o.tx=q.x;o.ty=q.y;o.x=x;o.y=y;}else{o=Object.assign({},q);o.tx=q.x;o.ty=q.y;}nm.set(q.id,o);return o;});MP.em=nm;} // 참가자: 적은 이전 위치에서 부드럽게 따라감
   G.eb=m.B.map(a=>({x:a[0],y:a[1],r:a[2],pink:!!a[3],splitT:a[4]?1:undefined,home:a[5],vx:a[6]||0,vy:a[7]||0}));G.shots=m.S.map(a=>({x:a[0],y:a[1],r:a[2],c:a[3],lance:a[4],vx:a[5],vy:a[6],o:a[7]}));G.tele=m.T;
   for(const p of m.NP)G.parts.push(p);for(const t of m.NT)G.texts.push(t);G.dn=G.dn||[];for(const d of m.ND)G.dn.push(d);
@@ -1605,7 +1624,7 @@ function guestSnap0(m){MP.lastSnap=performance.now();const w=m.w;Object.assign(G
   m.P.forEach((q,i)=>{const P=MP.P[i];if(!P)return;P.down=q.down;P.name=q.name;P.rv=q.rv;Object.assign(P.s,q.s);
     if(i===MP.me){const d=Math.hypot(q.pl.x-myPl.x,q.pl.y-myPl.y);if(d>60||G.pg&&q.s.pg&&q.s.pg.state!=='idle'){myPl.x=q.pl.x;myPl.y=q.pl.y;}else{myPl.x+=(q.pl.x-myPl.x)*.25;myPl.y+=(q.pl.y-myPl.y)*.25;}}
     else{P.pl.gx=q.pl.x;P.pl.gy=q.pl.y;if(P.pl.x===undefined||Math.hypot(q.pl.x-P.pl.x,q.pl.y-P.pl.y)>120){P.pl.x=q.pl.x;P.pl.y=q.pl.y;}}});
-  for(const k of SK)G[k]=MP.P[MP.me].s[k];hud();}
+  for(const k of SK)G[k]=MP.P[MP.me].s[k];hud();guestHang();}
 function guestTick(dt){for(const s of stars){s.y+=s.v*dt;if(s.y>H){s.y=0;s.x=Math.random()*W;}}
   const P=MP.P[MP.me];if(P&&!P.down&&G.main){const pl=P.pl,dx=pl.tx-pl.x,dy=pl.ty-pl.y,dist=Math.hypot(dx,dy),mx=MAINS[G.main.t].spd*SPD_PX*(1+((G.dev&&G.dev.boost)||0))*dt;if(dist<=mx){pl.x=pl.tx;pl.y=pl.ty;}else{pl.x+=dx/dist*mx;pl.y+=dy/dist*mx;}pl.wing+=dt*10;}
   for(const p of G.parts){p.l-=dt;if(!p.line){p.x+=(p.vx||0)*dt;p.y+=(p.vy||0)*dt;if(!p.spear){p.vx*=.94;p.vy*=.94;}}}G.parts=G.parts.filter(p=>p.l>0).slice(-300);
