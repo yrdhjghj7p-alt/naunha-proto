@@ -1045,7 +1045,7 @@ function mainFire0(){
     return Math.max(.05,.11-m.tier*.012);
   }
   if(k==='bird'){
-    const bs=window.BIRD_SP??.06,bn=bs?3:1; /* 10/29: 가운데 창 + 옆 창 2개(35%) */for(let i=0;i<bn;i++){const ang=(i-(bn-1)/2)*bs;G.shots.push({x,y,vx:Math.sin(ang)*600,vy:-Math.cos(ang)*600,dmg:BIRD_DMG*mul*(i===(bn-1)/2?1:(window.BIRD_SD??.35)),r:5,c:'#bfeaff',pierce:2+m.tier,hit:new Set(),el:'ice',lance:1});}
+    const bs=window.BIRD_SP??.06,bn=bs?3:1,pvy=Math.min(0,G.pg&&G.pg.state==='idle'?player.mvy||0:0); /* 11/3: 위로 움직일 때만 기체 속도를 창에 더함 */ /* 10/29: 가운데 창 + 옆 창 2개(35%) */for(let i=0;i<bn;i++){const ang=(i-(bn-1)/2)*bs;G.shots.push({x,y,vx:Math.sin(ang)*600,vy:-Math.cos(ang)*600+pvy,dmg:BIRD_DMG*mul*(i===(bn-1)/2?1:(window.BIRD_SD??.35)),r:5,c:'#bfeaff',pierce:2+m.tier,hit:new Set(),el:'ice',lance:1});}
     return window.BIRD_CD??.42;
   }
   // 독수리 가안 (10/29 시뮬): 일반 웨이브에선 가장 아래 적을 노리고(보스가 있으면 체력 가장 많은 적), 남은 피해는 다음 적으로 최대 3번 넘어감, 충전 시간 ×0.8
