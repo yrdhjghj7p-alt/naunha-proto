@@ -788,7 +788,7 @@ function tapBench(i){
 
 function chipHTML(o){if(!o||!o.chips)return '';return '<div class="chp">'+Object.keys(o.chips).map(k=>`<b style="background:${CHIPS[k].c}">${CHIPS[k].ic}${o.chips[k]>1?o.chips[k]:''}</b>`).join('')+'</div>';}
 function slotHTML(color,tier,name){const t=TIERS[tier];return (name?`<div class="nm">${name}</div>`:'')+`<div class="orb" style="background:${color};color:${color}"></div><div class="tier" style="color:${t.c}">${t.n}</div>`;}
-function hud(){if(MP.on&&MP.cur!==MP.me)return;if(G&&G.main){if(G._pt!==undefined&&G.main.tier>G._pt&&G.main.t===G._pmt)sfx('merge');G._pt=G.main.tier;G._pmt=G.main.t;}
+function hud(){if(typeof MP!=='undefined'&&MP.on&&MP.cur!==MP.me)return; /* 11/3: 친구 처리 중에는 내 화면 체력바를 건드리지 않음 */if(MP.on&&MP.cur!==MP.me)return;if(G&&G.main){if(G._pt!==undefined&&G.main.tier>G._pt&&G.main.t===G._pmt)sfx('merge');G._pt=G.main.tier;G._pmt=G.main.t;}
   document.getElementById('hWave').firstChild.nodeValue=(G.bossWave?'보스 ':'웨이브 ')+G.wave+'/'+LASTW();
   document.getElementById('hGems').textContent='◆ '+G.gems;
   const mx=maxHP(),cur=Math.max(0,Math.ceil(G.hpf*mx));document.getElementById('hpFill').style.width=(clamp(G.hpf,0,1)*100)+'%';document.getElementById('hpTxt').textContent=cur+' / '+mx;document.getElementById('hpBar').setAttribute('aria-label','체력 '+cur+' / '+mx);
@@ -874,12 +874,12 @@ function hit(e,dmg,el,tier,chain,src){if(e.inv>0)return;
     if(!o)break;d*=.6;dl(o,d,src);done.add(o);G.parts.push({x:cur.x,y:cur.y,x2:o.x,y2:o.y,l:.15,c:'#ffe14d',line:1});cur=o;}}
 }
 const maxHP=()=>Math.round(MAINS[G.main.t].hp*(1+G.main.tier*.15)*G.upg.hp*(G.hpMul||1));
-function hurt(dmg,pierceInv,cause){sfx('hurt');if(cause&&cause.endsWith('충돌')&&MAINS[G.main.t].kind==='swallow')dmg*=(window.SW_COL??1); /* 제비: 칼날 돌 때 몸통 충돌 피해 보정 */
+function hurt(dmg,pierceInv,cause){const me=!MP.on||MP.cur===MP.me;if(me)sfx('hurt');if(cause&&cause.endsWith('충돌')&&MAINS[G.main.t].kind==='swallow')dmg*=(window.SW_COL??1); /* 제비: 칼날 돌 때 몸통 충돌 피해 보정 */
   if(!running||(!pierceInv&&G.inv>0))return;
   {const pm=window.PG_INV??PG_INV;if(!pierceInv&&G.pg&&G.pg.state!=='idle'&&(pm===true||(pm==='body'&&cause&&cause.endsWith('충돌'))))return;} // 'body': 돌진 중 몸통 충돌만 무시, 탄은 맞음 // 펭귄 돌진 중 무적 (가안)
   if(G.shield&&!pierceInv){G.shield=false;G.inv=.4;burst(player.x,player.y,'#6ff0d2',16);say(player.x,player.y-34,'보호막!','#6ff0d2');return;}
   const d=Math.round(dmg*(G.bossWave?(G.wave===LASTW()?(window.BW_DM??1.5):1.15):(window.WV_DM??.7))*(1+G.wave*.02)*G.dif.dmg*(1+.1*(G.dev?G.dev.ampN:0)));G.hpf-=d/maxHP();cause=cause||'적 탄';if(MAINS[G.main.t].kind==='kid'){const ks0=kidStage();G.kidK=Math.max(0,(G.kidK||0)-KID_HIT);if(ks0>=3&&kidStage()<3&&G.main.tier>=2)say(player.x,player.y-60,'고룡 각성 풀림','#ff8a8a');}G.taken[cause]=(G.taken[cause]||0)+d;G.lastCause=cause;G.hitN=G.hitN||{};G.hitN[cause]=(G.hitN[cause]||0)+1;if(window.AUTO_GOD)G.hpf+=d/maxHP(); /* 오토 무적: 기록만 하고 체력은 그대로 */
-  if(!pierceInv)G.inv=.6;G.shake=.25;burst(player.x,player.y,'#ff4d6d',12);say(player.x-24,player.y-30,'-'+d,'#ff4d6d');hud();
+  if(!pierceInv)G.inv=.6;if(MP.on)G.hitC=(G.hitC||0)+1;else G.shake=.25;burst(player.x,player.y,me?'#ff4d6d':'#ffb0c0',me?12:6);say(player.x-24,player.y-30,(MP.on?MP.P[MP.cur].name+' ':'')+'-'+d,me?'#ff4d6d':'#ffb0c0');hud(); /* 11/3 협동: 흔들림은 맞은 사람 화면에서만 */
   if(G.hpf<=0&&MP.on){mpDown();return;}
   if(G.hpf<=0){if(G.stage.tut&&!window.TUT_NOREV){G.hpf=1;G.inv=2;G.tutRev++;tip('괜찮아요, 다시! (튜토리얼에서는 쓰러지지 않아요)',3);}else gameOver();}
 }
@@ -1524,7 +1524,7 @@ function startHTimer(){clearInterval(G.hti);G.hti=setInterval(()=>{if(document.h
 
 // ===== 협동 (10/31 프로토타입): 방장 폰이 전체를 계산하고 참가자(최대 4명)는 화면만 받아 그림. 연결은 PeerJS (주소에 ?mock 이 있으면 같은 브라우저 탭끼리 BroadcastChannel)
 const MP={on:false,host:false,guest:false,me:0,cur:0,P:[],code:'',guests:[],lastSnap:0,sendT:0,inT:0};
-const PK=['gems','gemAcc','gemMul','dev','shield','shT','chipGot','pendingChip','chipT','chipS','prismGot','chipLog','hpf','summons','mSummons','slots','deck','mdeck','main','bench','store','cstore','paint','ult','pg','heat','heatGrace','beams','stT','stealthT','inv','fireT','fireMax','U','umis','kidK','blades','swA','heliA','cones','upg','bestTier','ult2Told','_pt','_pmt','awkN','ultN','muzT','grazeN','taken','lastCause','gemTot','beamN','auto','_hadU','hpMul','tutRev','htab','hsel','hpaint','choices','hmsg','hready'];
+const PK=['gems','gemAcc','gemMul','dev','shield','shT','chipGot','pendingChip','chipT','chipS','prismGot','chipLog','hpf','summons','mSummons','slots','deck','mdeck','main','bench','store','cstore','paint','ult','pg','heat','heatGrace','beams','stT','stealthT','inv','fireT','fireMax','U','umis','kidK','blades','swA','heliA','cones','upg','bestTier','ult2Told','_pt','_pmt','awkN','ultN','muzT','grazeN','taken','lastCause','gemTot','beamN','auto','_hadU','hpMul','tutRev','htab','hsel','hpaint','choices','hmsg','hready','hitC'];
 const MP_HP=[1,1.7,2.3,2.9,3.5],MP_DMG=[1,1.1,1.2,1.3,1.4],MP_BS=[1,1.05,1.1,1.15,1.2],MP_CNT=[1,1.15,1.3,1.45,1.6]; // 기획서 인원별 강해짐 (확정, 수치 가안)
 function pSave(i){const P=MP.P[i];if(!P)return;for(const k of PK)P.s[k]=G[k];} // 기체 위치(pl)는 사람마다 고정된 객체라 저장하지 않음 (다른 사람 기체가 내 것으로 바뀌는 버그 수정)
 function pLoad(i){const P=MP.P[i];for(const k of PK)G[k]=P.s[k];player=P.pl;MP.cur=i;}
@@ -1600,7 +1600,7 @@ function mpStart(){hostBeat(true); // 방장: 판 시작
   MP.guests.forEach((g,k)=>netSend({t:'start',idx:k+1,n,stage,diff,upg,W,H,names:MP.P.map(P=>P.name)},g.id));
   say(W/2,H*.45,n+'명 협동 출격!','#6ff0d2');}
 // ---- 스냅샷 (방장 → 참가자, 초당 15번)
-const SK=['main','bench','slots','gems','hpf','ult','beams','heat','cones','blades','shield','inv','stealthT','kidK','fireT','fireMax','muzT','pg','dev','mSummons','summons','paint','pendingChip','chipT','deck','mdeck','upg','hpMul','bestTier','auto','awkN','ult2Told','umis','U','store','cstore','htab','hsel','hpaint','choices','hmsg','hready'];
+const SK=['main','bench','slots','gems','hpf','ult','beams','heat','cones','blades','shield','inv','stealthT','kidK','fireT','fireMax','muzT','pg','dev','mSummons','summons','paint','pendingChip','chipT','deck','mdeck','upg','hpMul','bestTier','auto','awkN','ult2Told','umis','U','store','cstore','htab','hsel','hpaint','choices','hmsg','hready','hitC'];
 const r1=v=>Math.round(v*10)/10;
 function plain(o,depth){if(o===null||o===undefined)return o;if(typeof o==='number')return r1(o);if(typeof o!=='object')return o;if(depth>3)return null;if(o instanceof Set)return null;if(Array.isArray(o))return o.map(v=>plain(v,depth+1));
   const r={};for(const k in o){const v=o[k];if(typeof v==='function')continue;if(k==='tg'||k==='hit'||k==='own'||k==='wpOf'||k==='real'||k==='twin'||k==='hs'||k==='e'){if(k==='tg'&&v&&typeof v==='object')r.tg={x:r1(v.x),y:r1(v.y),r:v.r,dead:v.dead};continue;}r[k]=plain(v,depth+1);}return r;}
@@ -1878,7 +1878,7 @@ function drawMe(){
     const E=ELS[s.el],z=8+s.tier;ctx.fillStyle=E.c;ctx.beginPath();ctx.roundRect?ctx.roundRect(s.x-z,s.y-z,z*2,z*2,4):ctx.rect(s.x-z,s.y-z,z*2,z*2);ctx.fill();
     ctx.fillStyle='#120d26';ctx.font=(10+s.tier)+'px "Do Hyeon",sans-serif';ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillText(E.ic,s.x,s.y+1);ctx.textBaseline='alphabetic';});
   if(G.dev&&G.dev.slowT>=0){ctx.strokeStyle='rgba(95,182,255,.25)';ctx.setLineDash([4,6]);ctx.lineWidth=2;ctx.beginPath();ctx.arc(player.x,player.y,SLOW_R[G.dev.slowT],0,6.29);ctx.stroke();ctx.setLineDash([]);}
-  if(G.cones)for(const c of G.cones){ctx.globalAlpha=c.l*3;ctx.fillStyle='#d8f4ff';ctx.beginPath();ctx.moveTo(c.x,c.y);ctx.arc(c.x,c.y,c.range,c.d-c.half,c.d+c.half);ctx.closePath();ctx.fill();ctx.globalAlpha=1;}
+  if(G.cones)for(const c of G.cones){const ca=(MP.on&&MP.cur!==MP.me?.07:.18)*Math.min(1,c.l/.18);ctx.globalAlpha=ca;ctx.fillStyle='#d8f4ff';ctx.beginPath();ctx.moveTo(c.x,c.y);ctx.arc(c.x,c.y,c.range,c.d-c.half,c.d+c.half);ctx.closePath();ctx.fill();ctx.globalAlpha=ca*2;ctx.strokeStyle='#bfeaff';ctx.lineWidth=1.5;ctx.stroke(); /* 11/3: 빙룡 냉기가 화면을 가려서 옅게 + 테두리 */ctx.globalAlpha=1;}
   if(G.blades&&MAINS[G.main.t].kind==='swallow')for(const [bx,by] of G.blades){ctx.fillStyle='#e6ecff';ctx.beginPath();ctx.ellipse(bx,by,8,3,Math.atan2(by-player.y,bx-player.x)+1.57,0,6.29);ctx.fill();}
   if(G.shield){ctx.strokeStyle='rgba(111,240,210,.7)';ctx.lineWidth=3;ctx.beginPath();ctx.arc(player.x,player.y,24,0,6.29);ctx.stroke();}
   if(!(G.inv>0&&!(G.stealthT>0)&&Math.floor(G.inv*12)%2)){
@@ -1906,7 +1906,8 @@ function drawPlayers(){if(!MP.on){drawMe();return;}const c=MP.cur,tags=[];
   swapTo(MP.me);const Pm=MP.P[MP.me];ctx.globalAlpha=Pm.down?.25:1;drawMe();ctx.globalAlpha=1;ctx.font='12px "Do Hyeon",sans-serif';ctx.textAlign='center';ctx.fillStyle='#ffcf4a';ctx.fillText(Pm.down?'격추됨 · 정비 때 복귀':'나',player.x,player.y+46);swapTo(c);}
 function draw(){if(typeof MP!=='undefined'&&MP.guest){ctx.save();ctx.setTransform(1,0,0,1,0,0);ctx.clearRect(0,0,C.width,C.height);ctx.restore();}
   ctx.clearRect(0,0,W,H);ctx.save();
-  if(G&&G.shake>0&&SHK){const A=G.shA||4;ctx.translate(rnd(-A,A),rnd(-A,A));}
+  if(G&&typeof MP!=='undefined'&&MP.on){const hc=G.hitC||0;if(MP.lhc!==undefined&&hc>MP.lhc){MP.hs=.25;if(MP.guest)sfx('hurt');}MP.lhc=hc;if(MP.hs>0)MP.hs-=1/60;}
+  if(G&&(G.shake>0||(typeof MP!=='undefined'&&MP.hs>0))&&SHK){const A=G.shA||4;ctx.translate(rnd(-A,A),rnd(-A,A));}
   ctx.fillStyle='#d8cfff';for(const s of stars){ctx.globalAlpha=s.s/2;ctx.fillRect(s.x,s.y,s.s,s.s*2);}ctx.globalAlpha=1;
   if(!G){ctx.restore();return;}
   if(SKY()){const g=ctx.createLinearGradient(0,0,0,H);g.addColorStop(0,'rgba(60,90,170,.55)');g.addColorStop(1,'rgba(120,170,230,.35)');ctx.fillStyle=g;ctx.fillRect(0,0,W,H);
