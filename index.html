@@ -616,7 +616,7 @@ function spawnBoss(id){
 // 조작 (확정): 메인 캐릭터를 누른 채 드래그해야 이동, 손을 떼면 0.2초 뒤 합성 칸이 올라옴
 let drag=null,dockT=0;const GRAB=46;
 const dockEl=document.getElementById('dock');
-const DOCK_FIX=()=>(typeof G!=='undefined'&&G&&G.stage&&G.stage.tut)||dockFixed||(typeof MP!=='undefined'&&MP.on); /* 협동은 모두 아래 창 고정: 같은 판 넓이 */ /* 튜토리얼은 항상 고정 */
+const DOCK_FIX=()=>(typeof G!=='undefined'&&G&&G.stage&&G.stage.tut)||dockFixed; /* 11/3: 협동도 혼자와 같이 아래 창이 내려감 (고정하면 화면이 너무 좁음). 판정 넓이는 모두 H-30으로 같음 */ /* 튜토리얼은 항상 고정 */
 const YMAX=()=>DOCK_FIX()&&dockEl.classList.contains('up')?H-dockEl.offsetHeight-26:H-30;
 function setDock(up){clearTimeout(dockT);if(DOCK_FIX())up=true;dockEl.classList.toggle('up',up);placeUlt();if(player&&DOCK_FIX()){player.ty=Math.min(player.ty,YMAX());player.y=Math.min(player.y,YMAX());}}
 function placeUlt(){ultBtn.style.bottom=(dockEl.classList.contains('up')?dockEl.offsetHeight+10:14)+'px';const u2=document.getElementById('ult2Btn');if(u2)u2.style.bottom=ultBtn.style.bottom;}
@@ -1573,7 +1573,7 @@ function netSend(m,to){ // 방장: to=참가자 id (없으면 모두), 참가자
   if(MP.host){for(const g of MP.guests){if(to&&g.id!==to)continue;const c=NET.conns[g.id];if(!c||!c.open)continue;const dc=c.dataChannel;if(m.t==='s'&&dc&&dc.bufferedAmount>262144)continue; /* 느린 폰이 밀리면 화면 정보는 건너뜀 (쌓여서 멈추는 것 방지) */try{c.send(m);}catch(err){}}}else if(NET.conn&&NET.conn.open)NET.conn.send(m);}
 function mpHost(){if(MP.host||MP.guest)return;loadPeer(()=>{MP.code=String(1000+pick(9000));MP.host=true;MP.guests=[];{const ci=document.getElementById('mpCode');ci.value=MP.code;ci.readOnly=true;ci.style.borderColor='#ffcf4a';ci.style.color='#ffcf4a';document.getElementById('mpJoinBtn').hidden=true;document.getElementById('mpHostBtn').textContent='내 방 코드 →';} /* 방장은 코드 칸에 내 방 코드를 보여주고 참가는 숨김 (다른 코드를 적어 헷갈리는 일 방지) */
   const onMsg=(id,m)=>{if(m.t==='hello'){if(MP.guests.length>=4||G&&running){netSend({t:'full'},id);return;}if(!MP.guests.some(g=>g.id===id))MP.guests.push({id,name:'친구'+(MP.guests.length+1),deck:m.deck,mdeck:m.mdeck});mpList();mpStatus('방 코드 '+MP.code+' · 친구에게 알려주세요');netSend({t:'lobby',n:MP.guests.length+1},id);}
-    else if(m.t==='i'){const k=MP.guests.findIndex(g=>g.id===id);const P=MP.P[k+1];if(P&&!P.down){P.pl.tx=clamp(m.x,18,W-18);P.pl.ty=clamp(m.y,H*.15,YMAX());}}
+    else if(m.t==='i'){const k=MP.guests.findIndex(g=>g.id===id);const P=MP.P[k+1];if(P&&!P.down){P.pl.tx=clamp(m.x,18,W-18);P.pl.ty=clamp(m.y,H*.15,H-30);}}
     else if(m.t==='c'){const k=MP.guests.findIndex(g=>g.id===id)+1;if(!MP.on||!MP.P[k]||!ACT[m.f]||MP.P[k].down)return;swapTo(k);try{ACT[m.f](...(m.a||[]));}catch(err){}swapTo(MP.me);hud();}
     else if(m.t==='bye'){const k=MP.guests.findIndex(g=>g.id===id);if(k>=0){if(MP.on&&MP.P[k+1]){MP.P[k+1].down=true;MP.P[k+1].rv=9;say(W/2,H*.3,MP.P[k+1].name+' 연결 끊김','#ff4d6d');}if(!MP.on)MP.guests.splice(k,1);mpList();}}};
   if(MOCK){NET.bc=new BroadcastChannel('nh-'+MP.code);NET.bc.onmessage=ev=>{const d=ev.data;if(d.to==='host')onMsg(d.from,d.m);};mpStatus('방 코드 '+MP.code+' (같은 브라우저 시험 모드)');mpList();return;}
