@@ -788,7 +788,7 @@ function tapBench(i){
 
 function chipHTML(o){if(!o||!o.chips)return '';return '<div class="chp">'+Object.keys(o.chips).map(k=>`<b style="background:${CHIPS[k].c}">${CHIPS[k].ic}${o.chips[k]>1?o.chips[k]:''}</b>`).join('')+'</div>';}
 function slotHTML(color,tier,name){const t=TIERS[tier];return (name?`<div class="nm">${name}</div>`:'')+`<div class="orb" style="background:${color};color:${color}"></div><div class="tier" style="color:${t.c}">${t.n}</div>`;}
-function hud(){if(typeof MP!=='undefined'&&MP.on&&MP.cur!==MP.me)return; /* 11/3: 친구 처리 중에는 내 화면 체력바를 건드리지 않음 */if(MP.on&&MP.cur!==MP.me)return;if(G&&G.main){if(G._pt!==undefined&&G.main.tier>G._pt&&G.main.t===G._pmt)sfx('merge');G._pt=G.main.tier;G._pmt=G.main.t;}
+function hud(){if(MP.on&&MP.cur!==MP.me)return;if(G&&G.main){if(G._pt!==undefined&&G.main.tier>G._pt&&G.main.t===G._pmt)sfx('merge');G._pt=G.main.tier;G._pmt=G.main.t;}
   document.getElementById('hWave').firstChild.nodeValue=(G.bossWave?'보스 ':'웨이브 ')+G.wave+'/'+LASTW();
   document.getElementById('hGems').textContent='◆ '+G.gems;
   const mx=maxHP(),cur=Math.max(0,Math.ceil(G.hpf*mx));document.getElementById('hpFill').style.width=(clamp(G.hpf,0,1)*100)+'%';document.getElementById('hpTxt').textContent=cur+' / '+mx;document.getElementById('hpBar').setAttribute('aria-label','체력 '+cur+' / '+mx);
@@ -1528,7 +1528,7 @@ const PK=['gems','gemAcc','gemMul','dev','shield','shT','chipGot','pendingChip',
 const MP_HP=[1,1.7,2.3,2.9,3.5],MP_DMG=[1,1.1,1.2,1.3,1.4],MP_BS=[1,1.05,1.1,1.15,1.2],MP_CNT=[1,1.15,1.3,1.45,1.6]; // 기획서 인원별 강해짐 (확정, 수치 가안)
 function pSave(i){const P=MP.P[i];if(!P)return;for(const k of PK)P.s[k]=G[k];} // 기체 위치(pl)는 사람마다 고정된 객체라 저장하지 않음 (다른 사람 기체가 내 것으로 바뀌는 버그 수정)
 function pLoad(i){const P=MP.P[i];for(const k of PK)G[k]=P.s[k];player=P.pl;MP.cur=i;}
-function swapTo(i){if(!MP.on||i===MP.cur)return;pSave(MP.cur);pLoad(i);}
+function swapTo(i){if(!MP.on)return;if(i===MP.cur){if(MP.P[i])player=MP.P[i].pl;return;}pSave(MP.cur);pLoad(i);} /* 11/3: 같은 사람이어도 기체를 되돌림 — 안 그러면 탄 판정 때 친구 위치(nearPl)로 내가 맞았음 */
 function forP(fn){if(!MP.on){fn(0);return;}const c=MP.cur;for(let i=0;i<MP.P.length;i++){swapTo(i);fn(i);}swapTo(c);}
 function forAlive(fn){if(!MP.on){fn(0);return;}const c=MP.cur;for(let i=0;i<MP.P.length;i++){if(MP.P[i].down)continue;swapTo(i);fn(i);}swapTo(c);}
 function nearPl(x,y){let b=null,bd=1e18;for(const P of MP.P){if(P.down)continue;const d=(P.pl.x-x)**2+(P.pl.y-y)**2;if(d<bd){bd=d;b=P.pl;}}return b||MP.P[MP.cur].pl;}
